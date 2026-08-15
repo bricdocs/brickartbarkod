@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jannersten Kart Barkod Okuyucu</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: #222;
+            color: #fff;
+            margin: 0;
+            padding: 10px;
+        }
+        #scanner-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            margin: auto;
+            border: 2px solid #555;
+            overflow: hidden;
+        }
+        video {
+            width: 100%;
+            display: block;
+        }
+        /* Kart barkodunu ortalamanız gereken kılavuz çizgi */
+        #laser-guide {
+            position: absolute;
+            top: 50%;
+            left: 5%;
+            width: 90%;
+            height: 4px;
+            background: red;
+            box-shadow: 0 0 8px red;
+            transform: translateY(-50%);
+        }
+        #result-panel {
+            margin-top: 15px;
+            padding: 10px;
+            background: #333;
+            border-radius: 5px;
+        }
+        .binary-output {
+            font-family: monospace;
+            word-break: break-all;
+            color: #00ff00;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Jannersten Barkod Tarayıcı</h2>
+    <p>Kartın barkod şeridini kırmızı çizgiye dik veya paralel gelecek şekilde ortalayın.</p>
+
+    <div id="scanner-container">
+        <video id="webcam" autoplay playsinline muted></video>
+        <div id="laser-guide"></div>
+    </div>
+
+    <!-- İşleme görseli için gizli Canvas -->
+    <canvas id="hidden-canvas" style="display:none;"></canvas>
+
+    <div id="result-panel">
+        <div><strong>Durum:</strong> <span id="status">Kamera başlatılıyor...</span></div>
+        <div><strong>Okunan Dizi:</strong> <span id="barcode-data" class="binary-output">-</span></div>
+    </div>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('hidden-canvas');
+        const ctx = canvas.getContext('2d');
+        const statusText = document.getElementById('status');
+        const dataText = document.getElementById('barcode-data');
+
+        // 1. Telefon Kamerasını Arka Kamera Olacak Şekilde Başlatma
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { exact: "environment" } }, // Arka kamera zorunlu
+                    audio: false
+                });
+                video.srcObject = stream;
+                statusText.innerText = "Tarama Aktif...";
+                requestAnimationFrame(processFrame);
+            } catch (err) {
+                // Bilgisayarda test ediyorsanız veya arka kamera yoksa hata vermemesi için fallback
+                try {
+                    const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                    video.srcObject = fallbackStream;
+                    statusText.innerText = "Ön Kamera Aktif (Test Modu)...";
+                    requestAnimationFrame(processFrame);
+                } catch (e) {
+                    statusText.innerText = "Kamera erişim hatası: " + e.message;
+                }
+            }
+        }
+
+        // 2. Her Kareyi Yakalama ve Piksel Analizi (Custom Barkod Okuma)
+        function processFrame() {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                // Çözünürlüğü eşitle
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                // Videodan kareyi Canvas'a çiz
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                // Kırmızı kılavuz çizgisinin olduğu yatay piksel hattını oku
+                const midY = Math.floor(canvas.height / 2);
+                const startX = Math.floor(canvas.width * 0.1);
+                const scanLength = Math.floor(canvas.width * 0.8);
+
+                // Belirlenen çizgideki piksellerin renk verisini al
+                const imgData = ctx.getImageData(startX, midY, scanLength, 1);
+                const pixels = imgData.data;
+
+                let binaryString = "";
+                let threshold = 120; // Siyah/Beyaz ayrımı için eşik değeri (0-255)
+
+                // Piksel dizisini gez (Her piksel RGBA formatında 4 element kaplar)
+                for (let i = 0; i < pixels.length; i += 4) {
+                    const r = pixels[i];
+                    const g = pixels[i+1];
+                    const b = pixels[i+2];
+                    
+                    // Gri tonlama (Grayscale) hesaplama
+                    const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+
+                    // Eşik değerine göre 1 (Beyaz boşluk) veya 0 (Siyah Çubuk) ekle
+                    binaryString += (brightness > threshold) ? "1" : "0";
+                }
+
+                // processFrame() fonksiyonunun sonundaki dataText kısmını şu şekilde güncelleyin:
+                const compressedData = parseBarPattern(binaryString);
+                
+                // Ham pikselleri 6 slotluk grid yapısına döküyoruz
+                // Not: İlk testlerinizde doğrudan 'compressedData' çıktısını kaydederek 52 kartın 
+                // hangi çubuk kombinasyonlarına (B ve W değerlerine) sahip olduğunu bir listeye not edebilirsiniz.
+                if (compressedData.length > 5) {
+                    // Örnek basitleştirilmiş mantıksal çözümleme:
+                    let binaryCode = "111110"; // decodeJannerstenBarcode(compressedData) fonksiyonundan gelen değer
+                    
+                    let cardResult = getCardNameByBinary(binaryCode);
+                    dataText.innerText = cardResult; // Ekranda doğrudan "Karo As" veya "Sinek 7" yazar.
+                }
+
+            }
+            // Döngüyü sürdür
+            requestAnimationFrame(processFrame);
+        }
+
+        // 3. Ardışık 1 ve 0'ları Sayarak Çubuk Genişliklerini Çıkarma (RLE Algoritması)
+        function parseBarPattern(binaryStr) {
+            if (!binaryStr) return "";
+            
+            let result = [];
+            let currentBit = binaryStr[0];
+            let count = 1;
+
+            for (let i = 1; i < binaryStr.length; i++) {
+                if (binaryStr[i] === currentBit) {
+                    count++;
+                } else {
+                    // Çubuk türünü (Siyah=B, Beyaz=W) ve piksel genişliğini kaydet
+                    const type = (currentBit === "0") ? "B" : "W";
+                    // Çok küçük parazit pikselleri filtrele (> 2 piksel genişlik)
+                    if (count > 2) {
+                        result.push(`${type}${count}`);
+                    }
+                    currentBit = binaryStr[i];
+                    count = 1;
+                }
+            }
+            
+            // Jannersten kartı eşleştirmesi için basitleştirilmiş çıktı 
+            // Örn: "B12 W6 B5" -> Kalın Siyah, İnce Beyaz, İnce Siyah
+            return result.slice(2, -2).join("-"); 
+        }
+
+        // Sayfa yüklendiğinde kamerayı başlat
+        window.addEventListener('DOMContentLoaded', startCamera);
+    </script>
+</body>
+</html>
