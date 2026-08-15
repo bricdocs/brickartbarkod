@@ -6,7 +6,8 @@
 const JANNERSTEN_DECK_MAP = {
     // Sinek 4 Canlı Ekran Yakalaması
     "D-I-D-I-D-I-D-K-G": "Sinek 4 (4 of Clubs)",
-    "I-D-I-D-I-D-I-D-I": "Sinek 4 / Maça 4 (Düz Varyasyon)",
+    "D-I-G-I-G-I-D-K-G": "Sinek 4 / Maça 4 (Düz Varyasyon)",//ESKI Örüntü: I-D-I-D-I-D-I-D-I
+    "D-I-D-I-D-I-G-K-D": "Diamond 3",
 
     // Aslar
     "I-D-I-D-K-D-I-D-I": "Sinek As (Ace of Clubs)",
