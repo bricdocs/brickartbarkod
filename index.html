@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jannersten Kart Barkod Okuyucu - v3.4 (Bip & Geçmiş)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: #111;
+            color: #fff;
+            margin: 0;
+            padding: 10px;
+        }
+        #scanner-container {
+            position: relative;
+            width: 100%;
+            max-width: 380px;
+            margin: auto;
+            border: 2px solid #444;
+            background: #000;
+            overflow: hidden;
+        }
+        video {
+            width: 100%;
+            display: block;
+        }
+        #laser-guide {
+            position: absolute;
+            top: 50%;
+            left: 10%;
+            width: 80%;
+            height: 3px;
+            background: #ff3333;
+            box-shadow: 0 0 10px #ff3333;
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+        #result-panel {
+            margin-top: 15px;
+            padding: 12px;
+            background: #222;
+            border-radius: 6px;
+            text-align: left;
+            max-width: 356px;
+            margin-left: auto;
+            margin-right: auto;
+            border: 1px solid #333;
+        }
+        .info-row {
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+        .binary-output {
+            font-family: monospace;
+            word-break: break-all;
+            color: #ff9900;
+            background: #000;
+            padding: 5px;
+            display: block;
+            margin-top: 2px;
+            font-size: 0.85em;
+            max-height: 50px;
+            overflow-y: auto;
+        }
+        .btn-group {
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            max-width: 380px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .action-btn {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        #switch-camera-btn { background: #ff9900; color: #111; }
+        #clear-history-btn { background: #cc3333; color: #fff; }
+        
+        #history-panel {
+            margin-top: 15px;
+            padding: 10px;
+            background: #1a1a1a;
+            border-radius: 6px;
+            border: 1px solid #333;
+            max-width: 356px;
+            margin-left: auto;
+            margin-right: auto;
+            text-align: left;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        #history-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 5px 0 0 0;
+            font-size: 0.85em;
+            font-family: monospace;
+        }
+        #history-list li {
+            padding: 4px 6px;
+            border-bottom: 1px solid #282828;
+            display: flex;
+            justify-content: space-between;
+        }
+        #history-list li span.card { color: #00ffcc; }
+        #history-list li span.pattern { color: #888; font-size: 0.9em; }
+    </style>
+    <script src="barkod-data.js"></script>
+</head>
+<body>
+
+    <h2>Jannersten Tarayıcı (Bip & Geçmiş Modu)</h2>
+    <p>Kartı sabit tutun, barkodu kırmızı çizgiye tam ortalayın.</p>
+
+    <div id="scanner-container">
+        <video id="webcam" autoplay playsinline muted></video>
+        <div id="laser-guide"></div>
+    </div>
+    
+    <div class="btn-group">
+        <button id="switch-camera-btn" class="action-btn" onclick="switchCamera()">Kamera Değiştir</button>
+        <button id="clear-history-btn" class="action-btn" onclick="clearHistory()">Listeyi Temizle</button>
+    </div>
+
+    <canvas id="hidden-canvas" style="display:none;"></canvas>
+
+    <div id="result-panel">
+        <div class="info-row"><strong>Durum:</strong> <span id="status" style="color: yellow;">Kamera başlatılıyor...</span></div>
+        <div class="info-row"><strong>Kart:</strong> <span id="card-name" style="color: #00ffcc; font-weight: bold; font-size: 1.2em;">KART BEKLENİYOR...</span></div>
+        <div class="info-row"><strong>Örüntü:</strong> <span id="pattern-code" style="color: #00ff00; font-weight: bold;">-</span></div>
+        <div class="info-row"><strong>Ham Model:</strong> <span id="raw-data" class="binary-output">-</span></div>
+    </div>
+
+    <!-- OKUNAN KARTLARIN GEÇMİŞ LİSTESİ -->
+    <div id="history-panel">
+        <strong>Okunan Kartlar Geçmişi:</strong>
+        <ul id="history-list">
+            <li style="color: #666; text-align: center;">Henüz kart okunmadı</li>
+        </ul>
+    </div>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('hidden-canvas');
+        const ctx = canvas.getContext('2d');
+        const statusText = document.getElementById('status');
+        const cardNameText = document.getElementById('card-name');
+        const patternCodeText = document.getElementById('pattern-code');
+        const rawDataText = document.getElementById('raw-data');
+        const historyList = document.getElementById('history-list');
+
+        let lockedPattern = "-";
+        let matchCount = 0;
+        const REQUIRED_MATCHES = 3; 
+        
+        let currentFacingMode = "environment";
+        let currentStream = null;
+        let lastLoggedCard = ""; // Aynı kartın üst üste listeye dolmasını engellemek için
+
+        // Bip sesi için Web Audio API yöneticisi
+        let audioCtx = null;
+        function playBeep() {
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime); // La5 yüksekliği (net bip)
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15); // 150 milisaniye bip
+            } catch (e) {
+                console.log("Ses çalınamadı: ", e);
+            }
+        }
+
+        function addHistoryItem(cardName, pattern) {
+            if (cardName === lastLoggedCard) return; // Aynı kartı spamlemeyelim
+            lastLoggedCard = cardName;
+
+            if (historyList.querySelector('li[style*="center"]')) {
+                historyList.innerHTML = ""; // "Henüz kart okunmadı" yazısını sil
+            }
+
+            const li = document.createElement('li');
+            li.innerHTML = `<span class="card">${cardName}</span> <span class="pattern">[${pattern}]</span>`;
+            historyList.prepend(li); // En son okunan en üste gelsin
+            playBeep(); // Bip sesini tetikle
+        }
+
+        function clearHistory() {
+            historyList.innerHTML = '<li style="color: #666; text-align: center;">Henüz kart okunmadı</li>';
+            lastLoggedCard = "";
+        }
+
+        async function startCamera() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+            try {
+                const constraints = {
+                    video: { facingMode: { exact: currentFacingMode } },
+                    audio: false
+                };
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                handleStream(stream, `Tarama Aktif (${currentFacingMode === "environment" ? "Arka" : "Ön"} Kamera)`);
+            } catch (err) {
+                try {
+                    const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode }, audio: false });
+                    handleStream(fallbackStream, `Tarama Aktif (${currentFacingMode === "environment" ? "Arka" : "Ön"} Alternatif)`);
+                } catch (e) {
+                    try {
+                        const basicStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                        handleStream(basicStream, "Test Modu (Genel Kamera)");
+                    } catch (ex) {
+                        statusText.innerText = "Kamera Hatası: " + ex.message;
+                    }
+                }
+            }
+        }
+
+        function handleStream(stream, statusMsg) {
+            currentStream = stream;
+            video.srcObject = stream;
+            statusText.innerText = statusMsg;
+            requestAnimationFrame(processFrame);
+        }
+
+        function switchCamera() {
+            currentFacingMode = (currentFacingMode === "environment") ? "user" : "environment";
+            startCamera();
+        }
+
+        function processFrame() {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                const midY = Math.floor(canvas.height / 2);
+                const startX = Math.floor(canvas.width * 0.15);
+                const scanLength = Math.floor(canvas.width * 0.7);
+
+                const imgData = ctx.getImageData(startX, midY, scanLength, 1);
+                const pixels = imgData.data;
+
+                let binaryString = "";
+                let threshold = 115;
+
+                for (let i = 0; i < pixels.length; i += 4) {
+                    const brightness = 0.299 * pixels[i] + 0.587 * pixels[i+1] + 0.114 * pixels[i+2];
+                    binaryString += (brightness > threshold) ? "1" : "0";
+                }
+
+                const compressedData = parseBarPattern(binaryString);
+                
+                if (compressedData.length > 3) {
+                    rawDataText.innerText = compressedData;
+
+                    const parts = compressedData.split("-").filter(p => {
+                        const val = parseInt(p.substring(1));
+                        return val >= 2 && val <= 35;
+                    });
+
+                    if (parts.length >= 9) {
+                        const targetSequence = parts.slice(-9);
+
+                        const blacks = targetSequence.filter(p => p.startsWith("B")).map(p => parseInt(p.substring(1)));
+                        const whites = targetSequence.filter(p => p.startsWith("W")).map(p => parseInt(p.substring(1)));
+
+                        if (blacks.length >= 4) {
+                            const avgBlack = blacks.reduce((a, b) => a + b, 0) / blacks.length;
+                            const avgWhite = whites.reduce((a, b) => a + b, 0) / whites.length;
+
+                            const pattern = targetSequence.map(p => {
+                                const val = parseInt(p.substring(1));
+                                if (p.startsWith("B")) {
+                                    return (val > 7) ? "K" : "I"; 
+                                } else {
+                                    return (val > avgWhite) ? "G" : "D"; 
+                                }
+                            }).join("-");
+
+                            const cardFound = (typeof JANNERSTEN_DECK_MAP !== 'undefined' && JANNERSTEN_DECK_MAP[pattern]) 
+                                              ? JANNERSTEN_DECK_MAP[pattern] 
+                                              : "Tanımlanmamış Örüntü: " + pattern;
+
+                            if (pattern === lockedPattern) {
+                                matchCount++;
+                            } else {
+                                lockedPattern = pattern;
+                                matchCount = 1;
+                            }
+
+                            if (matchCount >= REQUIRED_MATCHES) {
+                                cardNameText.innerText = cardFound;
+                                cardNameText.style.color = (cardFound.includes("Tanımlanmamış")) ? "#ff9900" : "#00ffff";
+                                patternCodeText.innerText = lockedPattern;
+                                
+                                // KART KİLİTLENDİĞİ ANDA GEÇMİŞE EKLE VE BİP ÇAL
+                                addHistoryItem(cardFound, lockedPattern);
+                            }
+                        }
+                    } else {
+                        resetScannerPanel();
+                    }
+                }
+            }
+            requestAnimationFrame(processFrame);
+        }
+
+        function resetScannerPanel() {
+            matchCount = Math.max(0, matchCount - 1);
+            if (matchCount === 0) {
+                cardNameText.innerText = "KART BEKLENİYOR...";
+                cardNameText.style.color = "#888";
+                patternCodeText.innerText = "-";
+                lastLoggedCard = ""; // Yeni kart okunabilmesi için kilidi esnet
+            }
+        }
+
+        function parseBarPattern(binaryStr) {
+            if (!binaryStr) return "";
+            let result = [];
+            let currentBit = binaryStr;
+            let count = 1;
+
+            for (let i = 1; i < binaryStr.length; i++) {
+                if (binaryStr[i] === currentBit) {
+                    count++;
+                } else {
+                    const type = (currentBit === "0") ? "B" : "W";
+                    if (count > 2) result.push(`${type}${count}`);
+                    currentBit = binaryStr[i];
+                    count = 1;
+                }
+            }
+            return result.slice(1, -1).join("-");
+        }
+
+        window.addEventListener('DOMContentLoaded', startCamera);
+    </script>
+</body>
+</html>
