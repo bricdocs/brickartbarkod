@@ -8,7 +8,7 @@
         body {
             font-family: Arial, sans-serif;
             text-align: center;
-            background: #222;
+            background: #111;
             color: #fff;
             margin: 0;
             padding: 10px;
@@ -16,56 +16,61 @@
         #scanner-container {
             position: relative;
             width: 100%;
-            max-width: 400px;
+            max-width: 380px;
             margin: auto;
-            border: 2px solid #555;
+            border: 2px solid #444;
+            background: #000;
             overflow: hidden;
         }
         video {
             width: 100%;
             display: block;
         }
+        /* Tarama kılavuzu */
         #laser-guide {
             position: absolute;
             top: 50%;
-            left: 5%;
-            width: 90%;
-            height: 4px;
-            background: red;
-            box-shadow: 0 0 8px red;
+            left: 10%;
+            width: 80%;
+            height: 3px;
+            background: #ff3333;
+            box-shadow: 0 0 10px #ff3333;
             transform: translateY(-50%);
+            pointer-events: none;
         }
         #result-panel {
             margin-top: 15px;
-            padding: 10px;
-            background: #333;
-            border-radius: 5px;
+            padding: 12px;
+            background: #222;
+            border-radius: 6px;
             text-align: left;
-            max-width: 380px;
+            max-width: 356px;
             margin-left: auto;
             margin-right: auto;
+            border: 1px solid #333;
         }
         .info-row {
             margin-bottom: 8px;
+            font-size: 0.95em;
         }
         .binary-output {
             font-family: monospace;
             word-break: break-all;
-            color: #00ff00;
-            background: #111;
-            padding: 4px;
+            color: #ff9900;
+            background: #000;
+            padding: 5px;
             display: block;
             margin-top: 2px;
-        }
-        .raw-output {
-            color: #ff9900;
+            font-size: 0.85em;
+            max-height: 50px;
+            overflow-y: auto;
         }
     </style>
 </head>
 <body>
 
-    <h2>Jannersten Barkod Tarayıcı (v3 - Kararlı)</h2>
-    <p>Kartı kırmızı çizgiye yaklaştırın ve 1 saniye sabit tutun.</p>
+    <h2>Jannersten Tarayıcı</h2>
+    <p>Kartı sabit tutun, şeridi kırmızı çizgiye ortalayın.</p>
 
     <div id="scanner-container">
         <video id="webcam" autoplay playsinline muted></video>
@@ -75,10 +80,10 @@
     <canvas id="hidden-canvas" style="display:none;"></canvas>
 
     <div id="result-panel">
-        <div class="info-row"><strong>Durum:</strong> <span id="status">Kamera başlatılıyor...</span></div>
-        <div class="info-row"><strong>Tespit Edilen Kart:</strong> <span id="card-name" style="color: #00ffff; font-weight: bold; font-size: 1.2em;">KART BEKLENİYOR...</span></div>
-        <div class="info-row"><strong>Çözümlenen Örüntü:</strong> <span id="pattern-code" style="color: #00ff00; font-weight: bold;">-</span></div>
-        <div class="info-row"><strong>Ham Çizgi Modeli:</strong> <span id="raw-data" class="binary-output raw-output">-</span></div>
+        <div class="info-row"><strong>Durum:</strong> <span id="status" style="color: yellow;">Kamera başlatılıyor...</span></div>
+        <div class="info-row"><strong>Kart:</strong> <span id="card-name" style="color: #00ffcc; font-weight: bold;">KART BEKLENİYOR...</span></div>
+        <div class="info-row"><strong>Örüntü:</strong> <span id="pattern-code" style="color: #00ff00; font-weight: bold;">-</span></div>
+        <div class="info-row"><strong>Ham Model:</strong> <span id="raw-data" class="binary-output">-</span></div>
     </div>
 
     <script>
@@ -90,19 +95,17 @@
         const patternCodeText = document.getElementById('pattern-code');
         const rawDataText = document.getElementById('raw-data');
 
-        // 1. Jannersten 5 Çubuklu Sabit Örüntü Haritası
-        // İnce çubuklar = I, Kalın çubuklar = K
+        // Sabit Tanımlama Haritası (Doğruladıkça buraya işleyebilirsiniz)
         const JANNERSTEN_DECK_MAP = {
-            "I-K-I-I-I": "Karo As (Ace of Diamonds)",   // Gönderdiğiniz: B4-B10-B5-B5-B5 kalıbı (İlk B4 gürültü olabilir, ana gövde kilitlenir)
-            "I-I-I-K-K": "Sinek 8 (8 of Clubs)",        // Gönderdiğiniz: ...B5-B11-B10 kalıbı
-            
-            // Kartları keşfettikçe buraya ekleyeceksiniz. Örn:
-            // "K-I-I-I-I": "Kupa Kızı",
+            "I-I-I-K-K": "Sinek 8 (8 of Clubs)",
+            "I-K-I-I-I": "Karo As (Ace of Diamonds)"
         };
 
-        // Kararlılık kontrolü için değişkenler
-        let patternHistory = [];
-        const HISTORY_LIMIT = 5; // Aynı örüntü üst üste kaç kare okunursa kart kabul edilsin?
+        // Kararlılık sayacı (Hayalet okumaları engellemek için yüksek eşik)
+        let lockedCard = "KART BEKLENİYOR...";
+        let lockedPattern = "-";
+        let matchCount = 0;
+        const REQUIRED_MATCHES = 8; // Aynı sonucun üst üste 8 kez gelmesi şartı
 
         async function startCamera() {
             try {
@@ -111,16 +114,16 @@
                     audio: false
                 });
                 video.srcObject = stream;
-                statusText.innerText = "Tarama Aktif...";
+                statusText.innerText = "Tarama Aktif";
                 requestAnimationFrame(processFrame);
             } catch (err) {
                 try {
                     const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
                     video.srcObject = fallbackStream;
-                    statusText.innerText = "Ön Kamera Aktif (Test Modu)...";
+                    statusText.innerText = "Test Modu (Ön Kamera)";
                     requestAnimationFrame(processFrame);
                 } catch (e) {
-                    statusText.innerText = "Kamera erişim hatası: " + e.message;
+                    statusText.innerText = "Kamera Hatası: " + e.message;
                 }
             }
         }
@@ -131,74 +134,60 @@
                 canvas.height = video.videoHeight;
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
+                // Yalnızca orta yatay şeridi tara
                 const midY = Math.floor(canvas.height / 2);
-                const startX = Math.floor(canvas.width * 0.1);
-                const scanLength = Math.floor(canvas.width * 0.8);
+                const startX = Math.floor(canvas.width * 0.15);
+                const scanLength = Math.floor(canvas.width * 0.7);
 
                 const imgData = ctx.getImageData(startX, midY, scanLength, 1);
                 const pixels = imgData.data;
 
                 let binaryString = "";
-                let threshold = 110; // Kontrastı artırmak için eşik değeri hafif düşürüldü
+                let threshold = 115;
 
                 for (let i = 0; i < pixels.length; i += 4) {
-                    const r = pixels[i];
-                    const g = pixels[i+1];
-                    const b = pixels[i+2];
-                    const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+                    const brightness = 0.299 * pixels[i] + 0.587 * pixels[i+1] + 0.114 * pixels[i+2];
                     binaryString += (brightness > threshold) ? "1" : "0";
                 }
 
                 const compressedData = parseBarPattern(binaryString);
                 
-                if (compressedData.length > 3) {
+                if (compressedData.length > 5) {
                     rawDataText.innerText = compressedData;
 
-                    // 1. Aşama: Sadece siyah çubukları ayıkla ve temizle
-                    const parts = compressedData.split("-");
-                    const blackBars = parts
+                    // Sadece anlamlı siyah çubukları al (Gürültü ve dış boşlukları ele)
+                    const blackBars = compressedData.split("-")
                         .filter(p => p.startsWith("B"))
                         .map(b => parseInt(b.replace("B", "")))
-                        .filter(width => width > 2 && width < 30); // Parazitleri temizle
+                        .filter(w => w >= 3 && w <= 25);
 
-                    // Jannersten kartı doğrulama filtresi: Ekranda gürültüler hariç 4 ila 6 çubuk olmalı
-                    if (blackBars.length >= 4 && blackBars.length <= 6) {
+                    // Jannersten standardı: Net 5 adet siyah çubuk beklenir
+                    if (blackBars.length === 5) {
+                        // Piksel genişliklerini Kalın (K) / İnce (I) olarak ayır
+                        const pattern = blackBars.map(w => (w > 8) ? "K" : "I").join("-");
                         
-                        // 2. Aşama: Titremeyi önleyen sabit oranlama (Sayıları Harfe Çevirme)
-                        // Gönderdiğiniz verilere göre: B3, B4, B5, B6 = İnce (I) | B9, B10, B11, B12 = Kalın (K)
-                        // Sınır çizgimizi sabit 7 piksel olarak belirliyoruz.
-                        const patternArray = blackBars.map(w => (w > 7) ? "K" : "I");
-                        const currentPattern = patternArray.join("-");
+                        const cardFound = JANNERSTEN_DECK_MAP[pattern] || "Tanımlanmamış Kart";
 
-                        patternCodeText.innerText = currentPattern; // Ekranda harf halini gösterir (Örn: I-K-I-I-I)
-
-                        // 3. Aşama: Kararlılık Kontrolü (Debounce)
-                        // Kart yokken veya el çok titrerken anlık yanlış okumaları engeller
-                        patternHistory.push(currentPattern);
-                        if (patternHistory.length > HISTORY_LIMIT) {
-                            patternHistory.shift();
+                        // Üst üste kararlılık (Debounce) denetimi
+                        if (pattern === lockedPattern) {
+                            matchCount++;
+                        } else {
+                            lockedPattern = pattern;
+                            matchCount = 1;
                         }
 
-                        // Eğer son 5 kare boyunca hep aynı harf dizilimi okunduysa kartı kesinleştir
-                        const allSame = patternHistory.every(p => p === currentPattern);
-                        if (allSame) {
-                            if (JANNERSTEN_DECK_MAP[currentPattern]) {
-                                cardNameText.innerText = JANNERSTEN_DECK_MAP[currentPattern];
-                                cardNameText.style.color = "#00ffff";
-                            } else {
-                                cardNameText.innerText = "Tanımlanmamış Kart";
-                                cardNameText.style.color = "#ff9900";
-                            }
+                        if (matchCount >= REQUIRED_MATCHES) {
+                            lockedCard = cardFound;
+                            cardNameText.innerText = lockedCard;
+                            cardNameText.style.color = (cardFound.includes("Tanımlanmamış")) ? "#ff9900" : "#00ffff";
+                            patternCodeText.innerText = lockedPattern;
                         }
                     } else {
-                        // Eğer ekranda barkod benzeri net çubuklar yoksa paneli temizle veya beklemede tut
-                        // Böylece kart kamerada yokken eski kartın yazısı kalmaz veya rastgele tetiklenmez.
-                        if (patternHistory.length > 0) {
-                            patternHistory.shift(); 
-                        }
-                        if (patternHistory.length === 0) {
+                        // Çubuk sayısı tutmazsa sayacı düşür, anlık kaybolmalarda hemen silme
+                        matchCount = Math.max(0, matchCount - 1);
+                        if (matchCount === 0) {
                             cardNameText.innerText = "KART BEKLENİYOR...";
-                            cardNameText.style.color = "#aaaaaa";
+                            cardNameText.style.color = "#888";
                             patternCodeText.innerText = "-";
                         }
                     }
@@ -217,15 +206,13 @@
                 if (binaryStr[i] === currentBit) {
                     count++;
                 } else {
-                    const type = (currentBit === "0") ? "B" : "W"; 
-                    if (count > 2) { 
-                        result.push(`${type}${count}`);
-                    }
+                    const type = (currentBit === "0") ? "B" : "W";
+                    if (count > 2) result.push(`${type}${count}`);
                     currentBit = binaryStr[i];
                     count = 1;
                 }
             }
-            return result.slice(2, -2).join("-"); 
+            return result.slice(1, -1).join("-");
         }
 
         window.addEventListener('DOMContentLoaded', startCamera);
