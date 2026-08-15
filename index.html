@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jannersten Kart Barkod Okuyucu - v3.4 (Bip & Geçmiş)</title>
+    <title>Jannersten Kart Barkod Okuyucu - v3.5 (Sadece Tanımlı Bip)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -116,7 +116,7 @@
 </head>
 <body>
 
-    <h2>Jannersten Tarayıcı (Bip & Geçmiş Modu)</h2>
+    <h2>Jannersten Tarayıcı (Filtreli Bip Modu)</h2>
     <p>Kartı sabit tutun, barkodu kırmızı çizgiye tam ortalayın.</p>
 
     <div id="scanner-container">
@@ -138,11 +138,10 @@
         <div class="info-row"><strong>Ham Model:</strong> <span id="raw-data" class="binary-output">-</span></div>
     </div>
 
-    <!-- OKUNAN KARTLARIN GEÇMİŞ LİSTESİ -->
     <div id="history-panel">
-        <strong>Okunan Kartlar Geçmişi:</strong>
+        <strong>Okunan Tanımlı Kartlar Geçmişi:</strong>
         <ul id="history-list">
-            <li style="color: #666; text-align: center;">Henüz kart okunmadı</li>
+            <li style="color: #666; text-align: center;">Henüz bilinen kart okunmadı</li>
         </ul>
     </div>
 
@@ -162,9 +161,8 @@
         
         let currentFacingMode = "environment";
         let currentStream = null;
-        let lastLoggedCard = ""; // Aynı kartın üst üste listeye dolmasını engellemek için
+        let lastLoggedCard = "";
 
-        // Bip sesi için Web Audio API yöneticisi
         let audioCtx = null;
         function playBeep() {
             try {
@@ -177,33 +175,33 @@
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(880, audioCtx.currentTime); // La5 yüksekliği (net bip)
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime);
                 gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
                 osc.connect(gain);
                 gain.connect(audioCtx.destination);
                 osc.start();
-                osc.stop(audioCtx.currentTime + 0.15); // 150 milisaniye bip
+                osc.stop(audioCtx.currentTime + 0.15);
             } catch (e) {
                 console.log("Ses çalınamadı: ", e);
             }
         }
 
         function addHistoryItem(cardName, pattern) {
-            if (cardName === lastLoggedCard) return; // Aynı kartı spamlemeyelim
+            if (cardName === lastLoggedCard) return;
             lastLoggedCard = cardName;
 
             if (historyList.querySelector('li[style*="center"]')) {
-                historyList.innerHTML = ""; // "Henüz kart okunmadı" yazısını sil
+                historyList.innerHTML = "";
             }
 
             const li = document.createElement('li');
             li.innerHTML = `<span class="card">${cardName}</span> <span class="pattern">[${pattern}]</span>`;
-            historyList.prepend(li); // En son okunan en üste gelsin
-            playBeep(); // Bip sesini tetikle
+            historyList.prepend(li);
+            playBeep();
         }
 
         function clearHistory() {
-            historyList.innerHTML = '<li style="color: #666; text-align: center;">Henüz kart okunmadı</li>';
+            historyList.innerHTML = '<li style="color: #666; text-align: center;">Henüz bilinen kart okunmadı</li>';
             lastLoggedCard = "";
         }
 
@@ -295,9 +293,9 @@
                                 }
                             }).join("-");
 
-                            const cardFound = (typeof JANNERSTEN_DECK_MAP !== 'undefined' && JANNERSTEN_DECK_MAP[pattern]) 
-                                              ? JANNERSTEN_DECK_MAP[pattern] 
-                                              : "Tanımlanmamış Örüntü: " + pattern;
+                            // DATA.JS İÇİNDE TANIMLI MI KONTROLÜ
+                            const isDefined = (typeof JANNERSTEN_DECK_MAP !== 'undefined' && JANNERSTEN_DECK_MAP[pattern]);
+                            const cardFound = isDefined ? JANNERSTEN_DECK_MAP[pattern] : "Tanımlanmamış Örüntü: " + pattern;
 
                             if (pattern === lockedPattern) {
                                 matchCount++;
@@ -308,11 +306,13 @@
 
                             if (matchCount >= REQUIRED_MATCHES) {
                                 cardNameText.innerText = cardFound;
-                                cardNameText.style.color = (cardFound.includes("Tanımlanmamış")) ? "#ff9900" : "#00ffff";
+                                cardNameText.style.color = isDefined ? "#00ffff" : "#ff9900";
                                 patternCodeText.innerText = lockedPattern;
                                 
-                                // KART KİLİTLENDİĞİ ANDA GEÇMİŞE EKLE VE BİP ÇAL
-                                addHistoryItem(cardFound, lockedPattern);
+                                // SADECE DATA.JS'TE TANIMLIYSA BİP ÇAL VE GEÇMİŞE YAZ
+                                if (isDefined) {
+                                    addHistoryItem(cardFound, lockedPattern);
+                                }
                             }
                         }
                     } else {
@@ -329,7 +329,7 @@
                 cardNameText.innerText = "KART BEKLENİYOR...";
                 cardNameText.style.color = "#888";
                 patternCodeText.innerText = "-";
-                lastLoggedCard = ""; // Yeni kart okunabilmesi için kilidi esnet
+                lastLoggedCard = "";
             }
         }
 
