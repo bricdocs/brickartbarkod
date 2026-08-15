@@ -41,18 +41,32 @@
             padding: 10px;
             background: #333;
             border-radius: 5px;
+            text-align: left;
+            max-width: 380px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .info-row {
+            margin-bottom: 8px;
         }
         .binary-output {
             font-family: monospace;
             word-break: break-all;
             color: #00ff00;
+            background: #111;
+            padding: 4px;
+            display: block;
+            margin-top: 2px;
+        }
+        .raw-output {
+            color: #ff9900;
         }
     </style>
 </head>
 <body>
 
     <h2>Jannersten Barkod Tarayıcı</h2>
-    <p>Kartın barkod şeridini kırmızı çizgiye dik veya paralel gelecek şekilde ortalayın.</p>
+    <p>Kartın barkod şeridini kırmızı çizgiye tam ortalayın.</p>
 
     <div id="scanner-container">
         <video id="webcam" autoplay playsinline muted></video>
@@ -63,8 +77,9 @@
     <canvas id="hidden-canvas" style="display:none;"></canvas>
 
     <div id="result-panel">
-        <div><strong>Durum:</strong> <span id="status">Kamera başlatılıyor...</span></div>
-        <div><strong>Okunan Dizi:</strong> <span id="barcode-data" class="binary-output">-</span></div>
+        <div class="info-row"><strong>Durum:</strong> <span id="status">Kamera başlatılıyor...</span></div>
+        <div class="info-row"><strong>Tespit Edilen Kart:</strong> <span id="card-name" style="color: #00ffff; font-weight: bold;">-</span></div>
+        <div class="info-row"><strong>Ham Çizgi Modeli (Not Edin):</strong> <span id="raw-data" class="binary-output raw-output">-</span></div>
     </div>
 
     <script>
@@ -72,20 +87,27 @@
         const canvas = document.getElementById('hidden-canvas');
         const ctx = canvas.getContext('2d');
         const statusText = document.getElementById('status');
-        const dataText = document.getElementById('barcode-data');
+        const cardNameText = document.getElementById('card-name');
+        const rawDataText = document.getElementById('raw-data');
 
-        // 1. Telefon Kamerasını Arka Kamera Olacak Şekilde Başlatma
+        // 1. Jannersten 6-Bit Barkod Eşleştirme Veri Tabanı
+        const JANNERSTEN_DECK_MAP = {
+            "111110": "Karo As (Ace of Diamonds)",
+            "011111": "Sinek 7 (7 of Clubs)",
+            // Diğer 50 kartın 6 haneli 1 ve 0 kodları test ettikçe buraya eklenecek
+        };
+
+        // 2. Telefon Kamerasını Başlatma
         async function startCamera() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: { exact: "environment" } }, // Arka kamera zorunlu
+                    video: { facingMode: { exact: "environment" } },
                     audio: false
                 });
                 video.srcObject = stream;
                 statusText.innerText = "Tarama Aktif...";
                 requestAnimationFrame(processFrame);
             } catch (err) {
-                // Bilgisayarda test ediyorsanız veya arka kamera yoksa hata vermemesi için fallback
                 try {
                     const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
                     video.srcObject = fallbackStream;
@@ -97,61 +119,51 @@
             }
         }
 
-        // 2. Her Kareyi Yakalama ve Piksel Analizi (Custom Barkod Okuma)
+        // 3. Kamera Görüntüsünü Piksel Seviyesinde İnceleme
         function processFrame() {
             if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                // Çözünürlüğü eşitle
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
-                
-                // Videodan kareyi Canvas'a çiz
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                // Kırmızı kılavuz çizgisinin olduğu yatay piksel hattını oku
+                // Kırmızı çizginin koordinatları
                 const midY = Math.floor(canvas.height / 2);
                 const startX = Math.floor(canvas.width * 0.1);
                 const scanLength = Math.floor(canvas.width * 0.8);
 
-                // Belirlenen çizgideki piksellerin renk verisini al
                 const imgData = ctx.getImageData(startX, midY, scanLength, 1);
                 const pixels = imgData.data;
 
                 let binaryString = "";
-                let threshold = 120; // Siyah/Beyaz ayrımı için eşik değeri (0-255)
+                let threshold = 120; // Siyah/Beyaz kontrast eşiği
 
-                // Piksel dizisini gez (Her piksel RGBA formatında 4 element kaplar)
                 for (let i = 0; i < pixels.length; i += 4) {
                     const r = pixels[i];
                     const g = pixels[i+1];
                     const b = pixels[i+2];
-                    
-                    // Gri tonlama (Grayscale) hesaplama
                     const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
-
-                    // Eşik değerine göre 1 (Beyaz boşluk) veya 0 (Siyah Çubuk) ekle
                     binaryString += (brightness > threshold) ? "1" : "0";
                 }
 
-                // processFrame() fonksiyonunun sonundaki dataText kısmını şu şekilde güncelleyin:
+                // Piksel dizisini sıkıştırılmış çubuk modellerine çevir (Örn: B12-W5-B14)
                 const compressedData = parseBarPattern(binaryString);
                 
-                // Ham pikselleri 6 slotluk grid yapısına döküyoruz
-                // Not: İlk testlerinizde doğrudan 'compressedData' çıktısını kaydederek 52 kartın 
-                // hangi çubuk kombinasyonlarına (B ve W değerlerine) sahip olduğunu bir listeye not edebilirsiniz.
                 if (compressedData.length > 5) {
-                    // Örnek basitleştirilmiş mantıksal çözümleme:
-                    let binaryCode = "111110"; // decodeJannerstenBarcode(compressedData) fonksiyonundan gelen değer
-                    
-                    let cardResult = getCardNameByBinary(binaryCode);
-                    dataText.innerText = cardResult; // Ekranda doğrudan "Karo As" veya "Sinek 7" yazar.
-                }
+                    // Ekranda ham B ve W değerlerini göster (Hangi kartın ne ürettiğini görmek için)
+                    rawDataText.innerText = compressedData;
 
+                    // Ham veriyi analiz edip 6 haneli koda çeviren geçici algoritma
+                    let binaryCode = estimateBinaryCode(compressedData);
+                    
+                    // Veri tabanından kart ismini eşleştir
+                    let cardResult = getCardNameByBinary(binaryCode);
+                    cardNameText.innerText = cardResult;
+                }
             }
-            // Döngüyü sürdür
             requestAnimationFrame(processFrame);
         }
 
-        // 3. Ardışık 1 ve 0'ları Sayarak Çubuk Genişliklerini Çıkarma (RLE Algoritması)
+        // 4. Ardışık Pikselleri Sayma Algoritması (RLE)
         function parseBarPattern(binaryStr) {
             if (!binaryStr) return "";
             
@@ -163,23 +175,35 @@
                 if (binaryStr[i] === currentBit) {
                     count++;
                 } else {
-                    // Çubuk türünü (Siyah=B, Beyaz=W) ve piksel genişliğini kaydet
-                    const type = (currentBit === "0") ? "B" : "W";
-                    // Çok küçük parazit pikselleri filtrele (> 2 piksel genişlik)
-                    if (count > 2) {
+                    const type = (currentBit === "0") ? "B" : "W"; // B = Black (Siyah), W = White (Beyaz)
+                    if (count > 2) { // Parazit temizleme
                         result.push(`${type}${count}`);
                     }
                     currentBit = binaryStr[i];
                     count = 1;
                 }
             }
-            
-            // Jannersten kartı eşleştirmesi için basitleştirilmiş çıktı 
-            // Örn: "B12 W6 B5" -> Kalın Siyah, İnce Beyaz, İnce Siyah
             return result.slice(2, -2).join("-"); 
         }
 
-        // Sayfa yüklendiğinde kamerayı başlat
+        // 5. Basit Grid Mantığıyla 1 ve 0 Kodunu Tahmin Etme Fonksiyonu
+        function estimateBinaryCode(compressedData) {
+            // Şimdilik test amaçlı sabit Karo As kodu döner.
+            // Ham verileri topladıktan sonra burayı gerçek bir "6 parçalı slot" okuyucuya dönüştüreceğiz.
+            if (compressedData.includes("B") && compressedData.split("B").length > 4) {
+                return "111110"; 
+            }
+            return "000000";
+        }
+
+        // 6. Kodu İsme Çeviren Fonksiyon (Hatanın Çözümü)
+        function getCardNameByBinary(binaryString) {
+            if (JANNERSTEN_DECK_MAP[binaryString]) {
+                return JANNERSTEN_DECK_MAP[binaryString];
+            }
+            return "Bilinmeyen Kart Dizilimi (" + binaryString + ")";
+        }
+
         window.addEventListener('DOMContentLoaded', startCamera);
     </script>
 </body>
