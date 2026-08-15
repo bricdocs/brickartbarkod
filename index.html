@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jannersten Kart Barkod Okuyucu</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: #222;
+            color: #fff;
+            margin: 0;
+            padding: 10px;
+        }
+        #scanner-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            margin: auto;
+            border: 2px solid #555;
+            overflow: hidden;
+        }
+        video {
+            width: 100%;
+            display: block;
+        }
+        /* Kart barkodunu ortalamanız gereken kılavuz çizgi */
+        #laser-guide {
+            position: absolute;
+            top: 50%;
+            left: 5%;
+            width: 90%;
+            height: 4px;
+            background: red;
+            box-shadow: 0 0 8px red;
+            transform: translateY(-50%);
+        }
+        #result-panel {
+            margin-top: 15px;
+            padding: 10px;
+            background: #333;
+            border-radius: 5px;
+            text-align: left;
+            max-width: 380px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .info-row {
+            margin-bottom: 8px;
+        }
+        .binary-output {
+            font-family: monospace;
+            word-break: break-all;
+            color: #00ff00;
+            background: #111;
+            padding: 4px;
+            display: block;
+            margin-top: 2px;
+        }
+        .raw-output {
+            color: #ff9900;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Jannersten Barkod Tarayıcı</h2>
+    <p>Kartın barkod şeridini kırmızı çizgiye tam ortalayın.</p>
+
+    <div id="scanner-container">
+        <video id="webcam" autoplay playsinline muted></video>
+        <div id="laser-guide"></div>
+    </div>
+
+    <!-- İşleme görseli için gizli Canvas -->
+    <canvas id="hidden-canvas" style="display:none;"></canvas>
+
+    <div id="result-panel">
+        <div class="info-row"><strong>Durum:</strong> <span id="status">Kamera başlatılıyor...</span></div>
+        <div class="info-row"><strong>Tespit Edilen Kart:</strong> <span id="card-name" style="color: #00ffff; font-weight: bold;">-</span></div>
+        <div class="info-row"><strong>Ham Çizgi Modeli:</strong> <span id="raw-data" class="binary-output raw-output">-</span></div>
+    </div>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('hidden-canvas');
+        const ctx = canvas.getContext('2d');
+        const statusText = document.getElementById('status');
+        const cardNameText = document.getElementById('card-name');
+        const rawDataText = document.getElementById('raw-data');
+
+        // 1. Jannersten Son Kararlı Örüntü Haritası (Kuyruk Analizi)
+        // Kartların en sağındaki son çubukların kalın (K) ve ince (I) durumları
+        const JANNERSTEN_DECK_MAP = {
+            "K-I-I": "Karo As (Ace of Diamonds)",   // Konsoldaki B9-B5-B5 veya B10-B5-B5 imzası
+            "K-K": "Sinek 8 (8 of Clubs)",          // Konsoldaki B11-B10 veya B10-B10 imzası
+            
+            // Yeni kartları keşfettikçe virgül koyarak buraya ekleyebilirsiniz:
+            // "I-K-I": "Kupa Papaz",
+            // "I-I-K": "Maça Kızı"
+        };
+
+        let lastLogged = "";
+
+        // 2. Telefon Kamerasını Arka Kamera Olacak Şekilde Başlatma
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { exact: "environment" } },
+                    audio: false
+                });
+                video.srcObject = stream;
+                statusText.innerText = "Tarama Aktif...";
+                requestAnimationFrame(processFrame);
+            } catch (err) {
+                try {
+                    const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                    video.srcObject = fallbackStream;
+                    statusText.innerText = "Ön Kamera Aktif (Test Modu)...";
+                    requestAnimationFrame(processFrame);
+                } catch (e) {
+                    statusText.innerText = "Kamera erişim hatası: " + e.message;
+                }
+            }
+        }
+
+        // 3. Kamera Görüntüsünü Piksel Seviyesinde İnceleme
+        function processFrame() {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                // Kırmızı çizginin koordinatları
+                const midY = Math.floor(canvas.height / 2);
+                const startX = Math.floor(canvas.width * 0.1);
+                const scanLength = Math.floor(canvas.width * 0.8);
+
+                const imgData = ctx.getImageData(startX, midY, scanLength, 1);
+                const pixels = imgData.data;
+
+                let binaryString = "";
+                let threshold = 120; // Siyah/Beyaz kontrast eşiği
+
+                for (let i = 0; i < pixels.length; i += 4) {
+                    const r = pixels[i];
+                    const g = pixels[i+1];
+                    const b = pixels[i+2];
+                    const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+                    binaryString += (brightness > threshold) ? "1" : "0";
+                }
+
+                // Piksel dizisini sıkıştırılmış çubuk modellerine çevir (Örn: B12-W5-B14)
+                const compressedData = parseBarPattern(binaryString);
+                
+                if (compressedData.length > 5) {
+                    // Ekranda ham B ve W değerlerini göster
+                    rawDataText.innerText = compressedData;
+
+                    // Konsola sadece temiz siyah çubukları (B) logla
+                    logStablePattern(compressedData.split("-").filter(p => p.startsWith("B")));
+
+                    // Ham veriyi analiz edip örüntü kodunu çıkart ("K-I-I" vb.)
+                    let patternCode = estimateBinaryCode(compressedData);
+                    
+                    // Veri tabanından kart ismini eşleştir
+                    let cardResult = getCardNameByBinary(patternCode);
+                    cardNameText.innerText = cardResult;
+                }
+            }
+            requestAnimationFrame(processFrame);
+        }
+
+        // 4. Ardışık Pikselleri Sayma Algoritması (RLE)
+        function parseBarPattern(binaryStr) {
+            if (!binaryStr) return "";
+            
+            let result = [];
+            let currentBit = binaryStr[0];
+            let count = 1;
+
+            for (let i = 1; i < binaryStr.length; i++) {
+                if (binaryStr[i] === currentBit) {
+                    count++;
+                } else {
+                    const type = (currentBit === "0") ? "B" : "W"; 
+                    if (count > 2) { // Parazit temizleme
+                        result.push(`${type}${count}`);
+                    }
+                    currentBit = binaryStr[i];
+                    count = 1;
+                }
+            }
+            return result.slice(2, -2).join("-"); 
+        }
+
+        // 5. El Titremesini ve Gürültüyü Yok Eden Kuyruk Filtresi
+        function estimateBinaryCode(compressedData) {
+            if (!compressedData) return "000";
+
+            const parts = compressedData.split("-");
+            // Sadece siyah çubukları al, devasa el parazitlerini ve aşırı küçük pikselleri ayıkla
+            const blackBars = parts
+                .filter(p => p.startsWith("B"))
+                .map(b => parseInt(b.replace("B", "")))
+                .filter(width => width > 2 && width < 30); 
+
+            if (blackBars.length < 2) return "000";
+
+            // En sağdaki (barkodun sonundaki) 4 çubuğun kuyruğunu al
+            const tail = blackBars.slice(-4);
+            
+            // Kuyruktaki ortalama çubuk kalınlığını bul
+            const avg = tail.reduce((a, b) => a + b, 0) / tail.length;
+            
+            // Ortalamaya göre Kalın (K) veya İnce (I) harflendirmesi yap
+            const patternArray = tail.map(w => (w >= avg) ? "K" : "I");
+
+            const last3 = patternArray.slice(-3).join("-");
+            const last2 = patternArray.slice(-2).join("-");
+
+            // Eğer haritamızda son 3'lü veya son 2'li örüntü varsa onu döndür
+            if (JANNERSTEN_DECK_MAP[last3]) {
+                return last3;
+            } else if (JANNERSTEN_DECK_MAP[last2]) {
+                return last2;
+            }
+
+            // Haritada henüz yoksa ekranda yakalanan ham son 3'lü harf kombinasyonunu göster
+            return last3; 
+        }
+
+        // 6. Kodu İsme Çeviren Fonksiyon
+        function getCardNameByBinary(patternString) {
+            if (JANNERSTEN_DECK_MAP[patternString]) {
+                return JANNERSTEN_DECK_MAP[patternString];
+            }
+            return "Tanımlanmamış Örüntü: [" + patternString + "]";
+        }
+
+        // 7. Konsol Takip Fonksiyonu
+        function logStablePattern(blackBars) {
+            let patternKey = blackBars.join("-");
+            if (patternKey !== lastLogged && blackBars.length >= 3) {
+                console.log("Yeni Kart Deseni Yakalandı:", patternKey);
+                lastLogged = patternKey;
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', startCamera);
+    </script>
+</body>
+</html>
