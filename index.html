@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jannersten Kart Barkod Okuyucu</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: #111;
+            color: #fff;
+            margin: 0;
+            padding: 10px;
+        }
+        #scanner-container {
+            position: relative;
+            width: 100%;
+            max-width: 380px;
+            margin: auto;
+            border: 2px solid #444;
+            background: #000;
+            overflow: hidden;
+        }
+        video {
+            width: 100%;
+            display: block;
+        }
+        #laser-guide {
+            position: absolute;
+            top: 50%;
+            left: 10%;
+            width: 80%;
+            height: 3px;
+            background: #ff3333;
+            box-shadow: 0 0 10px #ff3333;
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+        #result-panel {
+            margin-top: 15px;
+            padding: 12px;
+            background: #222;
+            border-radius: 6px;
+            text-align: left;
+            max-width: 356px;
+            margin-left: auto;
+            margin-right: auto;
+            border: 1px solid #333;
+        }
+        .info-row {
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+        .binary-output {
+            font-family: monospace;
+            word-break: break-all;
+            color: #ff9900;
+            background: #000;
+            padding: 5px;
+            display: block;
+            margin-top: 2px;
+            font-size: 0.85em;
+            max-height: 50px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Jannersten Tarayıcı (Eksiksiz Sürüm)</h2>
+    <p>Kartı sabit tutun, barkodu kırmızı çizgiye tam ortalayın.</p>
+
+    <div id="scanner-container">
+        <video id="webcam" autoplay playsinline muted></video>
+        <div id="laser-guide"></div>
+    </div>
+
+    <canvas id="hidden-canvas" style="display:none;"></canvas>
+
+    <div id="result-panel">
+        <div class="info-row"><strong>Durum:</strong> <span id="status" style="color: yellow;">Kamera başlatılıyor...</span></div>
+        <div class="info-row"><strong>Kart:</strong> <span id="card-name" style="color: #00ffcc; font-weight: bold; font-size: 1.2em;">KART BEKLENİYOR...</span></div>
+        <div class="info-row"><strong>Örüntü:</strong> <span id="pattern-code" style="color: #00ff00; font-weight: bold;">-</span></div>
+        <div class="info-row"><strong>Ham Model:</strong> <span id="raw-data" class="binary-output">-</span></div>
+    </div>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('hidden-canvas');
+        const ctx = canvas.getContext('2d');
+        const statusText = document.getElementById('status');
+        const cardNameText = document.getElementById('card-name');
+        const patternCodeText = document.getElementById('pattern-code');
+        const rawDataText = document.getElementById('raw-data');
+
+        // Deşifre Edilen Tüm Jannersten Örüntü Matrisi
+        // Ortak barkoda sahip çakışan kartlar alternatifli olarak eklenmiştir.
+        const JANNERSTEN_DECK_MAP = {
+            // ÖRÜNTÜ: [K-I-I-I-I]
+            "K-I-I-I-I": "Sinek Papaz / Sinek 2 / Karo 4",
+
+            // ÖRÜNTÜ: [I-K-I-I-I]
+            "I-K-I-I-I": "Maça Papaz / Maça As",
+
+            // ÖRÜNTÜ: [I-I-K-I-I]
+            "I-I-K-I-I": "Kupa Papaz / Sinek As",
+
+            // ÖRÜNTÜ: [I-I-I-K-I]
+            "I-I-I-K-I": "Karo Papaz / Karo 2",
+
+            // ÖRÜNTÜ: [I-I-I-I-K]
+            "I-I-I-I-K": "Karo As / Kupa 4",
+
+            // ÖRÜNTÜ: [I-I-I-K-K]
+            "I-I-I-K-K": "Sinek 8 / Karo 10 / Karo 5 / Karo 7",
+
+            // ÖRÜNTÜ: [K-K-I-I-I]
+            "K-K-I-I-I": "Sinek 10",
+
+            // ÖRÜNTÜ: [I-K-K-I-I]
+            "I-K-K-I-I": "Maça 10 / Maça 9",
+
+            // ÖRÜNTÜ: [I-I-K-K-I]
+            "I-I-K-K-I": "Kupa 9 / Kupa 5",
+
+            // ÖRÜNTÜ: [K-K-K-I-I]
+            "K-K-K-I-I": "Sinek Kız / Sinek 6",
+
+            // ÖRÜNTÜ: [I-K-K-K-I]
+            "I-K-K-K-I": "Maça Kız / Maça 6",
+
+            // ÖRÜNTÜ: [I-I-K-K-K]
+            "I-I-K-K-K": "Kupa Kız",
+
+            // ÖRÜNTÜ: [K-I-K-I-I]
+            "K-I-K-I-I": "Sinek Vale",
+
+            // ÖRÜNTÜ: [I-K-I-K-I]
+            "I-K-I-K-I": "Maça Vale",
+
+            // ÖRÜNTÜ: [I-I-K-I-K]
+            "I-I-K-I-K": "Kupa Vale / Kupa 3",
+
+            // ÖRÜNTÜ: [K-K-K-K-I]
+            "K-K-K-K-I": "Sinek 7",
+
+            // ÖRÜNTÜ: [I-I-I-I-I]
+            "I-I-I-I-I": "Sinek 4 / Maça 4"
+        };
+
+        let lockedPattern = "-";
+        let matchCount = 0;
+        const REQUIRED_MATCHES = 3; 
+
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { exact: "environment" } },
+                    audio: false
+                });
+                video.srcObject = stream;
+                statusText.innerText = "Tarama Aktif";
+                requestAnimationFrame(processFrame);
+            } catch (err) {
+                try {
+                    const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                    video.srcObject = fallbackStream;
+                    statusText.innerText = "Test Modu (Ön Kamera)";
+                    requestAnimationFrame(processFrame);
+                } catch (e) {
+                    statusText.innerText = "Kamera Hatası: " + e.message;
+                }
+            }
+        }
+
+        function processFrame() {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                const midY = Math.floor(canvas.height / 2);
+                const startX = Math.floor(canvas.width * 0.15);
+                const scanLength = Math.floor(canvas.width * 0.7);
+
+                const imgData = ctx.getImageData(startX, midY, scanLength, 1);
+                const pixels = imgData.data;
+
+                let binaryString = "";
+                let threshold = 115;
+
+                for (let i = 0; i < pixels.length; i += 4) {
+                    const brightness = 0.299 * pixels[i] + 0.587 * pixels[i+1] + 0.114 * pixels[i+2];
+                    binaryString += (brightness > threshold) ? "1" : "0";
+                }
+
+                const compressedData = parseBarPattern(binaryString);
+                
+                if (compressedData.length > 3) {
+                    rawDataText.innerText = compressedData;
+
+                    const parts = compressedData.split("-");
+                    const blackBars = parts
+                        .filter(p => p.startsWith("B"))
+                        .map(b => parseInt(b.replace("B", "")))
+                        .filter(w => w >= 2 && w <= 25); 
+
+                    if (blackBars.length >= 5) {
+                        // En kararlı son 5 çubuğu filtrele
+                        const targetBars = blackBars.slice(-5);
+                        const localAvg = targetBars.reduce((a, b) => a + b, 0) / 5;
+
+                        // Kalın (K) / İnce (I) harflendirmesi
+                        const pattern = targetBars.map(w => (w > localAvg) ? "K" : "I").join("-");
+
+                        const cardFound = JANNERSTEN_DECK_MAP[pattern] || "Tanımlanmamış Örüntü";
+
+                        if (pattern === lockedPattern) {
+                            matchCount++;
+                        } else {
+                            lockedPattern = pattern;
+                            matchCount = 1;
+                        }
+
+                        if (matchCount >= REQUIRED_MATCHES) {
+                            cardNameText.innerText = cardFound;
+                            cardNameText.style.color = (cardFound.includes("Tanımlanmamış")) ? "#ff9900" : "#00ffff";
+                            patternCodeText.innerText = lockedPattern;
+                        }
+                    } else {
+                        matchCount = Math.max(0, matchCount - 1);
+                        if (matchCount === 0) {
+                            cardNameText.innerText = "KART BEKLENİYOR...";
+                            cardNameText.style.color = "#888";
+                            patternCodeText.innerText = "-";
+                        }
+                    }
+                }
+            }
+            requestAnimationFrame(processFrame);
+        }
+
+        function parseBarPattern(binaryStr) {
+            if (!binaryStr) return "";
+            let result = [];
+            let currentBit = binaryStr;
+            let count = 1;
+
+            for (let i = 1; i < binaryStr.length; i++) {
+                if (binaryStr[i] === currentBit) {
+                    count++;
+                } else {
+                    const type = (currentBit === "0") ? "B" : "W";
+                    if (count > 2) result.push(`${type}${count}`);
+                    currentBit = binaryStr[i];
+                    count = 1;
+                }
+            }
+            return result.slice(1, -1).join("-");
+        }
+
+        window.addEventListener('DOMContentLoaded', startCamera);
+    </script>
+</body>
+</html>
