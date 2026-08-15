@@ -25,7 +25,6 @@
             width: 100%;
             display: block;
         }
-        /* Kart barkodunu ortalamanız gereken kılavuz çizgi */
         #laser-guide {
             position: absolute;
             top: 50%;
@@ -65,20 +64,20 @@
 </head>
 <body>
 
-    <h2>Jannersten Barkod Tarayıcı</h2>
-    <p>Kartın barkod şeridini kırmızı çizgiye tam ortalayın.</p>
+    <h2>Jannersten Barkod Tarayıcı (v3 - Kararlı)</h2>
+    <p>Kartı kırmızı çizgiye yaklaştırın ve 1 saniye sabit tutun.</p>
 
     <div id="scanner-container">
         <video id="webcam" autoplay playsinline muted></video>
         <div id="laser-guide"></div>
     </div>
 
-    <!-- İşleme görseli için gizli Canvas -->
     <canvas id="hidden-canvas" style="display:none;"></canvas>
 
     <div id="result-panel">
         <div class="info-row"><strong>Durum:</strong> <span id="status">Kamera başlatılıyor...</span></div>
-        <div class="info-row"><strong>Tespit Edilen Kart:</strong> <span id="card-name" style="color: #00ffff; font-weight: bold;">-</span></div>
+        <div class="info-row"><strong>Tespit Edilen Kart:</strong> <span id="card-name" style="color: #00ffff; font-weight: bold; font-size: 1.2em;">KART BEKLENİYOR...</span></div>
+        <div class="info-row"><strong>Çözümlenen Örüntü:</strong> <span id="pattern-code" style="color: #00ff00; font-weight: bold;">-</span></div>
         <div class="info-row"><strong>Ham Çizgi Modeli:</strong> <span id="raw-data" class="binary-output raw-output">-</span></div>
     </div>
 
@@ -88,22 +87,23 @@
         const ctx = canvas.getContext('2d');
         const statusText = document.getElementById('status');
         const cardNameText = document.getElementById('card-name');
+        const patternCodeText = document.getElementById('pattern-code');
         const rawDataText = document.getElementById('raw-data');
 
-        // 1. Jannersten Son Kararlı Örüntü Haritası (Kuyruk Analizi)
-        // Kartların en sağındaki son çubukların kalın (K) ve ince (I) durumları
+        // 1. Jannersten 5 Çubuklu Sabit Örüntü Haritası
+        // İnce çubuklar = I, Kalın çubuklar = K
         const JANNERSTEN_DECK_MAP = {
-            "K-I-I": "Karo As (Ace of Diamonds)",   // Konsoldaki B9-B5-B5 veya B10-B5-B5 imzası
-            "K-K": "Sinek 8 (8 of Clubs)",          // Konsoldaki B11-B10 veya B10-B10 imzası
+            "I-K-I-I-I": "Karo As (Ace of Diamonds)",   // Gönderdiğiniz: B4-B10-B5-B5-B5 kalıbı (İlk B4 gürültü olabilir, ana gövde kilitlenir)
+            "I-I-I-K-K": "Sinek 8 (8 of Clubs)",        // Gönderdiğiniz: ...B5-B11-B10 kalıbı
             
-            // Yeni kartları keşfettikçe virgül koyarak buraya ekleyebilirsiniz:
-            // "I-K-I": "Kupa Papaz",
-            // "I-I-K": "Maça Kızı"
+            // Kartları keşfettikçe buraya ekleyeceksiniz. Örn:
+            // "K-I-I-I-I": "Kupa Kızı",
         };
 
-        let lastLogged = "";
+        // Kararlılık kontrolü için değişkenler
+        let patternHistory = [];
+        const HISTORY_LIMIT = 5; // Aynı örüntü üst üste kaç kare okunursa kart kabul edilsin?
 
-        // 2. Telefon Kamerasını Arka Kamera Olacak Şekilde Başlatma
         async function startCamera() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
@@ -125,14 +125,12 @@
             }
         }
 
-        // 3. Kamera Görüntüsünü Piksel Seviyesinde İnceleme
         function processFrame() {
             if (video.readyState === video.HAVE_ENOUGH_DATA) {
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                // Kırmızı çizginin koordinatları
                 const midY = Math.floor(canvas.height / 2);
                 const startX = Math.floor(canvas.width * 0.1);
                 const scanLength = Math.floor(canvas.width * 0.8);
@@ -141,7 +139,7 @@
                 const pixels = imgData.data;
 
                 let binaryString = "";
-                let threshold = 120; // Siyah/Beyaz kontrast eşiği
+                let threshold = 110; // Kontrastı artırmak için eşik değeri hafif düşürüldü
 
                 for (let i = 0; i < pixels.length; i += 4) {
                     const r = pixels[i];
@@ -151,31 +149,66 @@
                     binaryString += (brightness > threshold) ? "1" : "0";
                 }
 
-                // Piksel dizisini sıkıştırılmış çubuk modellerine çevir (Örn: B12-W5-B14)
                 const compressedData = parseBarPattern(binaryString);
                 
-                if (compressedData.length > 5) {
-                    // Ekranda ham B ve W değerlerini göster
+                if (compressedData.length > 3) {
                     rawDataText.innerText = compressedData;
 
-                    // Konsola sadece temiz siyah çubukları (B) logla
-                    logStablePattern(compressedData.split("-").filter(p => p.startsWith("B")));
+                    // 1. Aşama: Sadece siyah çubukları ayıkla ve temizle
+                    const parts = compressedData.split("-");
+                    const blackBars = parts
+                        .filter(p => p.startsWith("B"))
+                        .map(b => parseInt(b.replace("B", "")))
+                        .filter(width => width > 2 && width < 30); // Parazitleri temizle
 
-                    // Ham veriyi analiz edip örüntü kodunu çıkart ("K-I-I" vb.)
-                    let patternCode = estimateBinaryCode(compressedData);
-                    
-                    // Veri tabanından kart ismini eşleştir
-                    let cardResult = getCardNameByBinary(patternCode);
-                    cardNameText.innerText = cardResult;
+                    // Jannersten kartı doğrulama filtresi: Ekranda gürültüler hariç 4 ila 6 çubuk olmalı
+                    if (blackBars.length >= 4 && blackBars.length <= 6) {
+                        
+                        // 2. Aşama: Titremeyi önleyen sabit oranlama (Sayıları Harfe Çevirme)
+                        // Gönderdiğiniz verilere göre: B3, B4, B5, B6 = İnce (I) | B9, B10, B11, B12 = Kalın (K)
+                        // Sınır çizgimizi sabit 7 piksel olarak belirliyoruz.
+                        const patternArray = blackBars.map(w => (w > 7) ? "K" : "I");
+                        const currentPattern = patternArray.join("-");
+
+                        patternCodeText.innerText = currentPattern; // Ekranda harf halini gösterir (Örn: I-K-I-I-I)
+
+                        // 3. Aşama: Kararlılık Kontrolü (Debounce)
+                        // Kart yokken veya el çok titrerken anlık yanlış okumaları engeller
+                        patternHistory.push(currentPattern);
+                        if (patternHistory.length > HISTORY_LIMIT) {
+                            patternHistory.shift();
+                        }
+
+                        // Eğer son 5 kare boyunca hep aynı harf dizilimi okunduysa kartı kesinleştir
+                        const allSame = patternHistory.every(p => p === currentPattern);
+                        if (allSame) {
+                            if (JANNERSTEN_DECK_MAP[currentPattern]) {
+                                cardNameText.innerText = JANNERSTEN_DECK_MAP[currentPattern];
+                                cardNameText.style.color = "#00ffff";
+                            } else {
+                                cardNameText.innerText = "Tanımlanmamış Kart";
+                                cardNameText.style.color = "#ff9900";
+                            }
+                        }
+                    } else {
+                        // Eğer ekranda barkod benzeri net çubuklar yoksa paneli temizle veya beklemede tut
+                        // Böylece kart kamerada yokken eski kartın yazısı kalmaz veya rastgele tetiklenmez.
+                        if (patternHistory.length > 0) {
+                            patternHistory.shift(); 
+                        }
+                        if (patternHistory.length === 0) {
+                            cardNameText.innerText = "KART BEKLENİYOR...";
+                            cardNameText.style.color = "#aaaaaa";
+                            patternCodeText.innerText = "-";
+                        }
+                    }
                 }
             }
             requestAnimationFrame(processFrame);
         }
 
-        // 4. Ardışık Pikselleri Sayma Algoritması (RLE)
         function parseBarPattern(binaryStr) {
             if (!binaryStr) return "";
-            
             let result = [];
             let currentBit = binaryStr[0];
             let count = 1;
@@ -185,7 +218,7 @@
                     count++;
                 } else {
                     const type = (currentBit === "0") ? "B" : "W"; 
-                    if (count > 2) { // Parazit temizleme
+                    if (count > 2) { 
                         result.push(`${type}${count}`);
                     }
                     currentBit = binaryStr[i];
@@ -193,59 +226,6 @@
                 }
             }
             return result.slice(2, -2).join("-"); 
-        }
-
-        // 5. El Titremesini ve Gürültüyü Yok Eden Kuyruk Filtresi
-        function estimateBinaryCode(compressedData) {
-            if (!compressedData) return "000";
-
-            const parts = compressedData.split("-");
-            // Sadece siyah çubukları al, devasa el parazitlerini ve aşırı küçük pikselleri ayıkla
-            const blackBars = parts
-                .filter(p => p.startsWith("B"))
-                .map(b => parseInt(b.replace("B", "")))
-                .filter(width => width > 2 && width < 30); 
-
-            if (blackBars.length < 2) return "000";
-
-            // En sağdaki (barkodun sonundaki) 4 çubuğun kuyruğunu al
-            const tail = blackBars.slice(-4);
-            
-            // Kuyruktaki ortalama çubuk kalınlığını bul
-            const avg = tail.reduce((a, b) => a + b, 0) / tail.length;
-            
-            // Ortalamaya göre Kalın (K) veya İnce (I) harflendirmesi yap
-            const patternArray = tail.map(w => (w >= avg) ? "K" : "I");
-
-            const last3 = patternArray.slice(-3).join("-");
-            const last2 = patternArray.slice(-2).join("-");
-
-            // Eğer haritamızda son 3'lü veya son 2'li örüntü varsa onu döndür
-            if (JANNERSTEN_DECK_MAP[last3]) {
-                return last3;
-            } else if (JANNERSTEN_DECK_MAP[last2]) {
-                return last2;
-            }
-
-            // Haritada henüz yoksa ekranda yakalanan ham son 3'lü harf kombinasyonunu göster
-            return last3; 
-        }
-
-        // 6. Kodu İsme Çeviren Fonksiyon
-        function getCardNameByBinary(patternString) {
-            if (JANNERSTEN_DECK_MAP[patternString]) {
-                return JANNERSTEN_DECK_MAP[patternString];
-            }
-            return "Tanımlanmamış Örüntü: [" + patternString + "]";
-        }
-
-        // 7. Konsol Takip Fonksiyonu
-        function logStablePattern(blackBars) {
-            let patternKey = blackBars.join("-");
-            if (patternKey !== lastLogged && blackBars.length >= 3) {
-                console.log("Yeni Kart Deseni Yakalandı:", patternKey);
-                lastLogged = patternKey;
-            }
         }
 
         window.addEventListener('DOMContentLoaded', startCamera);
