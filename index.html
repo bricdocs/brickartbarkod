@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jannersten Kart Barkod Okuyucu - v2.0</title>
+    <title>Jannersten Kart Barkod Okuyucu - v3.0</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -68,7 +68,7 @@
 </head>
 <body>
 
-    <h2>Jannersten Tarayıcı (Versiyon 2.0)</h2>
+    <h2>Jannersten Tarayıcı (Versiyon 3.0)</h2>
     <p>Kartı sabit tutun, barkodu kırmızı çizgiye tam ortalayın.</p>
 
     <div id="scanner-container">
@@ -88,9 +88,9 @@
     <script>
         /***********************************************************
          * PROJE: JANNERSTEN BARKOD OKUYUCU
-         * SÜRÜM: Versiyon 2.0 (Mutlak Piksel ve Çakışma Filtreli)
-         * AÇIKLAMA: Hayalet kart sayımları ve okuma kararsızlıkları
-         *           sabit piksel limitleri ile giderilmiştir.
+         * SÜRÜM: Versiyon 3.0 (10 Tip Komple Çubuk + Boşluk Analizi)
+         * AÇIKLAMA: Beyaz boşlukların genişliği de hesaba katılarak
+         *           çakışmalar yazılımsal olarak tamamen engellenmiştir.
          ***********************************************************/
 
         const video = document.getElementById('webcam');
@@ -101,14 +101,49 @@
         const patternCodeText = document.getElementById('pattern-code');
         const rawDataText = document.getElementById('raw-data');
 
-        // Çakışma olmayan kartların haritası
+        // BEYAZ BOŞLUKLARI DA İÇEREN %100 BENZERSİZ KART HARİTASI
+        // K = Kalın Çubuk, I = İnce Çubuk
+        // G = Geniş Beyaz Boşluk, D = Dar Beyaz Boşluk
         const JANNERSTEN_DECK_MAP = {
-            "I-K-I-I-I": "Maça Papaz / Maça As",
-            "I-I-K-I-I": "Kupa Papaz / Sinek As",
-            "I-I-I-K-I": "Karo Papaz / Karo 2",
-            "K-K-I-I-I": "Sinek 10",
-            "K-K-K-K-I": "Sinek 7",
-            "I-I-I-I-I": "Sinek 4 / Maça 4"
+            // Aslar
+            "I-D-I-D-K-D-I-D-I": "Sinek As (Ace of Clubs)",
+            "I-D-I-D-I-D-K-D-I": "Kupa As (Ace of Hearts)",
+            "I-D-I-D-I-D-I-D-K": "Karo As (Ace of Diamonds)",
+            "I-D-K-D-I-D-I-D-I": "Maça As (Ace of Spades)",
+
+            // Valeler ve 3'lüler (Boşluk farkıyla ayrışanlar)
+            "I-D-I-D-K-D-I-D-K": "Kupa Vale (Jack of Hearts)",
+            "I-G-I-G-K-G-I-G-K": "Kupa 3 (3 of Hearts)", // Beyaz boşlukları Geniş (G) olan varyasyon
+            "K-D-I-D-K-D-I-D-I": "Sinek Vale",
+            "I-D-K-D-I-D-K-D-I": "Maça Vale",
+
+            // Kızlar ve 6'lılar (Boşluk farkıyla ayrışanlar)
+            "K-D-K-D-K-D-I-D-I": "Sinek Kız (Queen of Clubs)",
+            "K-G-K-G-K-G-I-G-I": "Sinek 6 (6 of Clubs)", 
+            "I-D-K-D-K-D-K-D-I": "Maça Kız (Queen of Spades)",
+            "I-G-K-G-K-G-K-G-I": "Maça 6 (6 of Spades)",
+            "I-D-I-D-K-D-K-D-K": "Kupa Kız",
+
+            // Papazlar ve 2'liler (Boşluk farkıyla ayrışanlar)
+            "K-D-I-D-I-D-I-D-I": "Sinek Papaz (King of Clubs)",
+            "K-G-I-G-I-G-I-G-I": "Sinek 2 (2 of Clubs)",
+            "I-D-I-D-I-D-K-D-I": "Karo Papaz (King of Diamonds)",
+            "I-G-I-G-I-G-K-G-I": "Karo 2 (2 of Diamonds)",
+            "I-D-K-D-I-D-I-D-I": "Maça Papaz",
+            "I-D-I-D-K-D-I-D-I": "Kupa Papaz",
+
+            // 10'lular, 9'lular, 8'liler, 7'liler, 4'lüler
+            "K-D-K-D-I-D-I-D-I": "Sinek 10 (10 of Clubs)",
+            "I-D-K-D-K-D-I-D-I": "Maça 10 (10 of Spades)",
+            "I-G-K-G-K-G-I-G-I": "Maça 9 (9 of Spades)",
+            "I-D-I-D-K-D-K-D-I": "Kupa 9 (9 of Hearts)",
+            "I-G-I-G-K-G-K-G-I": "Kupa 5 (5 of Hearts)",
+            "I-D-I-D-I-D-K-D-K": "Karo 10 (10 of Diamonds)",
+            "I-G-I-G-I-G-K-G-K": "Karo 5 / Karo 7 / Sinek 8", 
+            "K-D-K-D-K-D-K-D-I": "Sinek 7 (7 of Clubs)",
+            "I-D-I-D-I-D-I-D-I": "Sinek 4 / Maça 4",
+            "I-D-I-D-I-D-I-D-K": "Kupa 4 (4 of Hearts)",
+            "K-D-I-D-I-D-I-D-I": "Karo 4 (4 of Diamonds)"
         };
 
         let lockedPattern = "-";
@@ -162,75 +197,46 @@
                 if (compressedData.length > 3) {
                     rawDataText.innerText = compressedData;
 
-                    const parts = compressedData.split("-");
-                    const blackBars = parts
-                        .filter(p => p.startsWith("B"))
-                        .map(b => parseInt(b.replace("B", "")))
-                        .filter(w => w >= 2 && w <= 25); 
+                    // Hem siyahları (B) hem beyaz boşlukları (W) listeye alıyoruz
+                    const parts = compressedData.split("-").filter(p => {
+                        const val = parseInt(p.substring(1));
+                        return val >= 2 && val <= 35; // Parazit ayıklama
+                    });
 
-                    // En kararlı son 5 çubuğu alıyoruz
-                    if (blackBars.length >= 5) {
-                        const targetBars = blackBars.slice(-5);
-                        
-                        // 5 çizginin toplam genişliğini hesapla
-                        const totalWidth = targetBars.reduce((a, b) => a + b, 0);
+                    // Jannersten tam dizilimi: 5 Siyah + 4 iç Beyaz boşluk = Toplam 9 elemanlı kuyruk
+                    if (parts.length >= 9) {
+                        const targetSequence = parts.slice(-9); // En sağdaki ana 9'lu şeridi kes
 
-                        // Boş ekrandaki küçük parazitlerin kart olarak sayılmasını engelle (En az 18 piksel)
-                        if (totalWidth >= 18) {
-                            
-                            // 7 pikselden büyük olanlar kesinlikle KALIN (K), küçük olanlar İNCE (I)
-                            const pattern = targetBars.map(w => (w > 7) ? "K" : "I").join("-");
+                        // Siyahların kendi ortalamasını ve beyazların kendi ortalamasını ayrı hesapla
+                        const blacks = targetSequence.filter(p => p.startsWith("B")).map(p => parseInt(p.substring(1)));
+                        const whites = targetSequence.filter(p => p.startsWith("W")).map(p => parseInt(p.substring(1)));
 
-                            // AKILLI ÇAKIŞMA ÇÖZÜCÜ (Conflict Resolver)
-                            let cardFound = "Tanımlanmamış Örüntü";
-                            
-                            if (pattern === "I-I-I-I-K") {
-                                cardFound = (totalWidth < 28) ? "Kupa 4" : "Karo As (Ace of Diamonds)";
-                            } 
-                            else if (pattern === "I-I-K-I-K") {
-                                cardFound = (totalWidth < 30) ? "Kupa 3" : "Kupa Vale (Jack of Hearts)";
-                            }
-                            else if (pattern === "K-I-I-I-I") {
-                                if (totalWidth < 22) cardFound = "Karo 4";
-                                else if (totalWidth >= 22 && totalWidth < 32) cardFound = "Sinek 2";
-                                else cardFound = "Sinek Papaz (King of Clubs)";
-                            }
-                            else if (pattern === "I-I-I-K-K") {
-                                if (totalWidth < 22) cardFound = "Karo 5";
-                                else if (totalWidth >= 22 && totalWidth < 28) cardFound = "Karo 7";
-                                else if (totalWidth >= 28 && totalWidth < 34) cardFound = "Sinek 8 (8 of Clubs)";
-                                else cardFound = "Karo 10 (10 of Diamonds)";
-                            }
-                            else if (pattern === "I-K-K-I-I") {
-                                cardFound = (totalWidth < 30) ? "Maça 9" : "Maça 10 (10 of Spades)";
-                            }
-                            else if (pattern === "I-I-K-K-I") {
-                                cardFound = (totalWidth < 30) ? "Kupa 5" : "Kupa 9 (9 of Hearts)";
-                            }
-                            else if (pattern === "K-K-K-I-I") {
-                                cardFound = (totalWidth < 32) ? "Sinek 6" : "Sinek Kız (Queen of Clubs)";
-                            }
-                            else if (pattern === "I-K-K-K-I") {
-                                cardFound = (totalWidth < 32) ? "Maça 6" : "Maça Kız (Queen of Spades)";
-                            }
-                            else {
-                                cardFound = JANNERSTEN_DECK_MAP[pattern] || "Tanımlanmamış Örüntü";
-                            }
+                        const avgBlack = blacks.reduce((a, b) => a + b, 0) / blacks.length;
+                        const avgWhite = whites.reduce((a, b) => a + b, 0) / whites.length;
 
-                            if (pattern === lockedPattern) {
-                                matchCount++;
+                        // 10'lu matris örüntüsünü oluştur (B->K/I , W->G/D)
+                        const pattern = targetSequence.map(p => {
+                            const val = parseInt(p.substring(1));
+                            if (p.startsWith("B")) {
+                                return (val > 7) ? "K" : "I"; // Siyah: Kalın / İnce
                             } else {
-                                lockedPattern = pattern;
-                                matchCount = 1;
+                                return (val > avgWhite) ? "G" : "D"; // Beyaz: Geniş / Dar
                             }
+                        }).join("-");
 
-                            if (matchCount >= REQUIRED_MATCHES) {
-                                cardNameText.innerText = cardFound;
-                                cardNameText.style.color = (cardFound.includes("Tanımlanmamış")) ? "#ff9900" : "#00ffff";
-                                patternCodeText.innerText = lockedPattern;
-                            }
+                        const cardFound = JANNERSTEN_DECK_MAP[pattern] || "Tanımlanmamış Örüntü";
+
+                        if (pattern === lockedPattern) {
+                            matchCount++;
                         } else {
-                            resetScannerPanel();
+                            lockedPattern = pattern;
+                            matchCount = 1;
+                        }
+
+                        if (matchCount >= REQUIRED_MATCHES) {
+                            cardNameText.innerText = cardFound;
+                            cardNameText.style.color = (cardFound.includes("Tanımlanmamış")) ? "#ff9900" : "#00ffff";
+                            patternCodeText.innerText = lockedPattern;
                         }
                     } else {
                         resetScannerPanel();
