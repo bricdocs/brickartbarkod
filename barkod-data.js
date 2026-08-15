@@ -8,7 +8,12 @@ const JANNERSTEN_DECK_MAP = {
     "D-I-D-I-D-I-D-K-G": "Sinek 4 (4 of Clubs)",
     "D-I-G-I-G-I-D-K-G": "Maça 4",//ESKI Örüntü: I-D-I-D-I-D-I-D-I
     "D-I-D-I-D-I-G-K-D": "Diamond 3",
-
+    "I-G-K-D-I-G-I-G-I": "Club Ace",
+    "D-I-D-I-G-I-D-I-G": "Spade 8",
+    "K-I-D-K-G-K-G-I-D": "Club 10",
+    "I-G-K-D-I-G-K-D-I": "Club 7",
+    "D-I-G-I-D-I-D-I-G": "Spade King"
+    
     // // Aslar
     // "I-D-I-D-K-D-I-D-I": "Sinek As (Ace of Clubs)",
     // "I-D-I-D-I-D-K-D-I": "Kupa As (Ace of Hearts)",
