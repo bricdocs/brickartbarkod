@@ -35,6 +35,35 @@ const JANNERSTEN_DECK_MAP = {
     "K-D-I-D-I-D-I-D-I": "DQ",
     "I-D-I-D-I-D-I-D-I": "DK",
 
+    //HEARTS
+    "I-D-I-D-I-D-I-D-I": "HA",
+    "I-G-K-D-K-D-I-D-I": "H2",
+    "I-G-I-G-K-D-I-D-I": "H3",
+    "I-D-I-G-I-D-I-D-I": "H4",
+    "I-G-I-G-I-D-I-D-I": "H5",
+    "I-G-K-G-I-D-I-D-I": "H6",
+    "I-D-K-G-I-D-I-D-I": "H7",
+    "I-D-K-G-K-D-I-D-I": "H8",
+    "K-I-G-K-G-K-D-I-D": "H9",
+    "I-G-I-G-K-G-I-D-I": "HT",
+    "I-G-I-D-K-D-I-D-I": "HJ",
+    "D-I-D-I-G-K-D-I-D": "HQ",
+    "D-I-G-K-G-K-D-I-D": "HK",
+
+    //SPADES
+    "I-D-I-D-I-G-I-G-I": "SA",
+    "I-G-I-D-K-G-I-G-I": "S2",
+    "I-D-I-G-K-G-I-G-I": "S3",
+    "G-K-I-D-I-D-K-D-I": "S5",
+    "I-D-K-G-K-D-I-G-I": "S6",
+    "I-G-K-G-I-D-I-G-I": "S7",
+    "I-D-I-D-I-D-I-G-I": "S9",
+    "I-D-K-G-I-D-K-G-I": "ST",
+    "I-G-K-D-I-D-K-G-I": "SJ",
+    " I-D-K-D-I-D-I-G-I": "SQ"
+
+
+
     
     "D-I-G-I-G-I-D-K-G": "Maça 4",//ESKI Örüntü: I-D-I-D-I-D-I-D-I
     "D-I-D-I-G-I-D-I-G": "Spade 8",
