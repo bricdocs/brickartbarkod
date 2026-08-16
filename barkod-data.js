@@ -23,8 +23,7 @@ const JANNERSTEN_DECK_MAP = {
     //DIAMONDS
     "I-D-K-G-I-G-I-G-I": "DA",
     "I-G-I-G-I-G-K-D-I": "D2",
-    
-    
+    "D-I-D-I-D-I-G-K-D": "D3",
     "I-G-I-G-K-G-I-D-I": "D4",
     "I-D-I-D-K-G-I-D-I": "D5",
     "I-D-I-D-I-G-I-D-I": "D6",
@@ -38,11 +37,7 @@ const JANNERSTEN_DECK_MAP = {
 
     
     "D-I-G-I-G-I-D-K-G": "Maça 4",//ESKI Örüntü: I-D-I-D-I-D-I-D-I
-    
-    
     "D-I-D-I-G-I-D-I-G": "Spade 8",
-    
-    
     "D-I-G-I-D-I-D-I-G": "Spade King"
     
     // // Aslar
