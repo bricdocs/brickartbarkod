@@ -24,7 +24,7 @@ const JANNERSTEN_DECK_MAP = {
     "I-D-K-G-I-G-I-G-I": "DA",
     "I-G-I-G-I-G-K-D-I": "D2",
     "D-I-D-I-D-I-G-K-D": "D3",
-    "I-G-I-G-K-G-I-D-I": "D4",
+    "G-I-D-I-D-K-D-D-I": "D4",//HT MUKERRERDI DUZELTILDI >> I-G-I-G-K-G-I-D-I
     "I-D-I-D-K-G-I-D-I": "D5",
     "I-D-I-D-I-G-I-D-I": "D6",
     "I-G-I-D-I-G-I-D-I": "D7",
@@ -45,7 +45,7 @@ const JANNERSTEN_DECK_MAP = {
     "I-D-K-G-I-D-I-D-I": "H7",
     "I-D-K-G-K-D-I-D-I": "H8",
     "K-I-G-K-G-K-D-I-D": "H9",
-    "G-I-D-I-D-K-D-D-I": "HT",//D4 MUKERRERDI >> I-G-I-G-K-G-I-D-I
+    "I-G-I-G-K-G-I-D-I": "HT",//D4 MUKERRERDI DUZELTILDI >> I-G-I-G-K-G-I-D-I
     "I-G-I-D-K-D-I-D-I": "HJ",
     "D-I-D-I-G-K-D-I-D": "HQ",
     "D-I-G-K-G-K-D-I-D": "HK",
