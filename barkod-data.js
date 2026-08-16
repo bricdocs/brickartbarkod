@@ -54,20 +54,17 @@ const JANNERSTEN_DECK_MAP = {
     "I-D-I-D-I-G-I-G-I": "SA",
     "I-G-I-D-K-G-I-G-I": "S2",
     "I-D-I-G-K-G-I-G-I": "S3",
+    "D-I-G-I-G-I-D-K-G": "S4",
     "G-K-I-D-I-D-K-D-I": "S5",
     "I-D-K-G-K-D-I-G-I": "S6",
     "I-G-K-G-I-D-I-G-I": "S7",
+    "D-I-D-I-G-I-D-I-G": "S8",
     "I-D-I-D-I-D-I-G-I": "S9",
     "I-D-K-G-I-D-K-G-I": "ST",
     "I-G-K-D-I-D-K-G-I": "SJ",
-    " I-D-K-D-I-D-I-G-I": "SQ"
+    "I-D-K-D-I-D-I-G-I": "SQ",
+    "D-I-G-I-D-I-D-I-G": "SK"
 
-
-
-    
-    "D-I-G-I-G-I-D-K-G": "Maça 4",//ESKI Örüntü: I-D-I-D-I-D-I-D-I
-    "D-I-D-I-G-I-D-I-G": "Spade 8",
-    "D-I-G-I-D-I-D-I-G": "Spade King"
     
     // // Aslar
     // "I-D-I-D-K-D-I-D-I": "Sinek As (Ace of Clubs)",
