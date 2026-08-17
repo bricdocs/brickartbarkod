@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jannersten Kart Barkod Okuyucu - v4.3.D4 (Boş Ekran Susturuculu)</title>
+    <title>Jannersten Kart Barkod Okuyucu - v4.3.D5 (Kesin Susturucu)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -129,19 +129,14 @@
 </head>
 <body>
 
-    <h2>Jannersten Tarayıcı (v4.3.D4)</h2>
-    <p>Boş ekran gürültü filtresi sertleştirildi.</p>
+    <h2>Jannersten Tarayıcı (v4.3.D5)</h2>
+    <p>Matematiksel genişlik barajı eklendi. Konsol kilitlendi.</p>
 
     <div id="scanner-container">
         <video id="webcam" autoplay playsinline muted></video>
         <div id="laser-guide"></div>
     </div>
     
-    <div id="preview-container">
-        <div><small style="color: #ff9900;">Canlı Çizgiler:</small></div>
-        <canvas id="debug-canvas"></canvas>
-    </div>
-
     <div class="btn-group">
         <button id="switch-camera-btn" class="action-btn" onclick="switchCamera()">Kamera Değiştir</button>
         <button id="clear-history-btn" class="action-btn" onclick="clearHistory()">Listeyi Temizle</button>
@@ -286,7 +281,7 @@
                 debugCanvas.height = 1; 
                 dctx.clearRect(0, 0, debugCanvas.width, debugCanvas.height);
 
-                for (let y = 0; y < scanHeight; y += 4) { // Taramayı biraz daha seyrek (her 4 piksel) yaparak yükü hafiflettik
+                for (let y = 0; y < scanHeight; y += 3) {
                     const rowOffset = y * scanLength * 4;
                     let rowBrightnesses = new Array(scanLength);
                     let minB = 255;
@@ -300,14 +295,14 @@
                         if (b > maxB) maxB = b;
                     }
 
-                    // GÜRÜLTÜ ENGEL: Boş/düz alan kontrast farkı 45'ten küçükse direkt elenir
-                    if ((maxB - minB) < 45) continue; 
+                    let dynamicThreshold = (minB + maxB) / 2;
+                    if ((maxB - minB) < 45) continue;
 
                     let binaryString = "";
                     let debugImgData = dctx.createImageData(scanLength, 1);
 
                     for (let x = 0; x < scanLength; x++) {
-                        const isWhite = rowBrightnesses[x] > ((minB + maxB) / 2);
+                        const isWhite = rowBrightnesses[x] > dynamicThreshold;
                         binaryString += isWhite ? "1" : "0";
                         
                         const idx = x * 4;
@@ -331,57 +326,63 @@
                             return val >= 2 && val <= 35;
                         });
 
-                        // KESİN SINIR: Jannersten barkodu tam olarak 9 ile 12 parça arasındadır. 
-                        // Dışı (13+, 8-) kesinlikle gürültüdür ve konsola asla basılmaz.
-                        if (parts.length >= 9 && parts.length <= 12) {
+                        if (parts.length >= 9 && parts.length <= 15) {
                             const targetSequence = parts.slice(-9);
                             const blacks = targetSequence.filter(p => p.startsWith("B")).map(p => parseInt(p.substring(1)));
                             const whites = targetSequence.filter(p => p.startsWith("W")).map(p => parseInt(p.substring(1)));
 
                             if (blacks.length >= 4) {
-                                const avgBlack = blacks.reduce((a, b) => a + b, 0) / blacks.length;
-                                const avgWhite = whites.reduce((a, b) => a + b, 0) / whites.length;
+                                // GÜNCELLEME: MILIMETRIK PIKSEL GENIŞLIK BARAJI
+                                const totalBlackWidth = blacks.reduce((a, b) => a + b, 0);
 
-                                const pattern = targetSequence.map(p => {
-                                    const val = parseInt(p.substring(1));
-                                    if (p.startsWith("B")) {
-                                        return (val > 7) ? "K" : "I"; 
-                                    } else {
-                                        return (val > avgWhite) ? "G" : "D"; 
-                                    }
-                                }).join("-");
-
-                                if (compressedData !== lastLoggedRaw) {
-                                    console.log("👉 GERÇEK KART ÇIKTISI:", compressedData, "=> Örüntü:", pattern);
-                                    lastLoggedRaw = compressedData;
-                                }
-
-                                dctx.putImageData(debugImgData, 0, 0);
-
-                                let isDefined = (typeof JANNERSTEN_DECK_MAP !== 'undefined' && JANNERSTEN_DECK_MAP[pattern]);
-                                let cardFound = isDefined ? JANNERSTEN_DECK_MAP[pattern] : "Tanımlanmamış Örüntü: " + pattern;
-                                
-                                if (isDefined || !validPatternFound) {
-                                    rawDataText.innerText = compressedData;
-
-                                    if (pattern === lockedPattern) {
-                                        matchCount++;
-                                    } else {
-                                        lockedPattern = pattern;
-                                        matchCount = 1;
-                                    }
-
-                                    if (matchCount >= REQUIRED_MATCHES) {
-                                        cardNameText.innerText = cardFound;
-                                        cardNameText.style.color = isDefined ? "#00ffff" : "#ff9900";
-                                        patternCodeText.innerText = lockedPattern;
-                                        
-                                        if (isDefined) {
-                                            addHistoryItem(cardFound, lockedPattern);
-                                        }
-                                    }
+                                // Jannersten gerçek 5 siyah çizgisinin toplam piksel alanı asla 38'den büyük ve 15'ten küçük olamaz.
+                                // Sizin attığınız boş ekran gürültüsünde bu değer 100+ piksel çıktığı için anında elenir.
+                                if (totalBlackWidth >= 15 && totalBlackWidth <= 38) {
                                     
-                                    validPatternFound = true;
+                                    const avgBlack = blacks.reduce((a, b) => a + b, 0) / blacks.length;
+                                    const avgWhite = whites.reduce((a, b) => a + b, 0) / whites.length;
+
+                                    const pattern = targetSequence.map(p => {
+                                        const val = parseInt(p.substring(1));
+                                        if (p.startsWith("B")) {
+                                            return (val > 7) ? "K" : "I"; 
+                                        } else {
+                                            return (val > avgWhite) ? "G" : "D"; 
+                                        }
+                                    }).join("-");
+
+                                    if (compressedData !== lastLoggedRaw) {
+                                        console.log("👉 GERÇEK KART ÇIKTISI:", compressedData, "=> Örüntü:", pattern);
+                                        lastLoggedRaw = compressedData;
+                                    }
+
+                                    dctx.putImageData(debugImgData, 0, 0);
+
+                                    let isDefined = (typeof JANNERSTEN_DECK_MAP !== 'undefined' && JANNERSTEN_DECK_MAP[pattern]);
+                                    let cardFound = isDefined ? JANNERSTEN_DECK_MAP[pattern] : "Tanımlanmamış Örüntü: " + pattern;
+                                    
+                                    if (isDefined || !validPatternFound) {
+                                        rawDataText.innerText = compressedData;
+
+                                        if (pattern === lockedPattern) {
+                                            matchCount++;
+                                        } else {
+                                            lockedPattern = pattern;
+                                            matchCount = 1;
+                                        }
+
+                                        if (matchCount >= REQUIRED_MATCHES) {
+                                            cardNameText.innerText = cardFound;
+                                            cardNameText.style.color = isDefined ? "#00ffff" : "#ff9900";
+                                            patternCodeText.innerText = lockedPattern;
+                                            
+                                            if (isDefined) {
+                                                addHistoryItem(cardFound, lockedPattern);
+                                            }
+                                        }
+                                        
+                                        validPatternFound = true;
+                                    }
                                 }
                             }
                         }
