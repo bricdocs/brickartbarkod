@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jannersten Kart Barkod Okuyucu - v4.6 (Oransal Filtreli Sürüm)</title>
+    <title>Jannersten Kart Barkod Okuyucu - v4.6.1 (Hata Düzeltildi)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -129,14 +129,19 @@
 </head>
 <body>
 
-    <h2>Jannersten Tarayıcı (v4.6 - Oransal Sabitleme)</h2>
-    <p>Kartı geniş alana yaklaştırın. D4 ve HT kalıcı olarak oransal anatomi filtresiyle ayrılmıştır.</p>
+    <h2>Jannersten Tarayıcı (v4.6.1)</h2>
+    <p>Tuval hatası giderildi.</p>
 
     <div id="scanner-container">
         <video id="webcam" autoplay playsinline muted></video>
         <div id="laser-guide"></div>
     </div>
     
+    <div id="preview-container">
+        <div><small style="color: #ff9900;">Canlı Çizgiler:</small></div>
+        <canvas id="debug-canvas"></canvas>
+    </div>
+
     <div class="btn-group">
         <button id="switch-camera-btn" class="action-btn" onclick="switchCamera()">Kamera Değiştir</button>
         <button id="clear-history-btn" class="action-btn" onclick="clearHistory()">Listeyi Temizle</button>
@@ -229,7 +234,7 @@
             }
             try {
                 const constraints = {
-                    video: { facingMode: { exact: "environment" } },
+                    video: { facingMode: { exact: currentFacingMode } },
                     audio: false
                 };
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -269,7 +274,6 @@
 
                 const startX = Math.floor(canvas.width * 0.15);
                 const scanLength = Math.floor(canvas.width * 0.7);
-
                 const startY = 0; 
                 const scanHeight = 260;
 
@@ -285,7 +289,6 @@
                 for (let y = 0; y < scanHeight; y += 3) {
                     const rowOffset = y * scanLength * 4;
                     let rowBrightnesses = new Array(scanLength);
-
                     let minB = 255;
                     let maxB = 0;
 
@@ -298,7 +301,6 @@
                     }
 
                     let dynamicThreshold = (minB + maxB) / 2;
-
                     if ((maxB - minB) < 30) continue;
 
                     let binaryString = "";
@@ -357,16 +359,11 @@
                                 let cardFound = "Tanımlanmamış Örüntü: " + pattern;
                                 let isDefined = false;
 
-                                // KRİTİK GÜNCELLEME: ANATOMİK ORAN FİLTRESİ
                                 if (pattern === "I-G-I-G-K-G-I-D-I") {
                                     isDefined = true;
-                                    // 5 siyah çubuğun en kalın olanı ile en ince olanını bulup oranla
                                     const maxBar = Math.max(...blacks);
                                     const minBar = Math.min(...blacks);
                                     const thicknessRatio = maxBar / minBar;
-
-                                    // Konsoldan gelen Karo 4 verilerinde: B15 / B5 = 3 katı | B14 / B5 = 2.8 katı çıkmıştır.
-                                    // Eğer en kalın çubuk en incesinden 2.5 katından daha büyükse kesinlikle Karo 4 (D4)'tür.
                                     cardFound = (thicknessRatio >= 2.5) ? "Karo 4 (D4)" : "Kupa 10 (HT)";
                                 } else {
                                     isDefined = (typeof JANNERSTEN_DECK_MAP !== 'undefined' && JANNERSTEN_DECK_MAP[pattern]);
@@ -413,7 +410,7 @@
                 cardNameText.innerText = "KART BEKLENİYOR...";
                 cardNameText.style.color = "#888";
                 patternCodeText.innerText = "-";
-                lastLoggedCard = "";
+                lastLoggedRaw = "";
             }
         }
 
