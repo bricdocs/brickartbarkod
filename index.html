@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jannersten Kart Barkod Okuyucu - v4.3 (Saf Motor + Log Part 1)</title>
+    <title>Jannersten Kart Barkod Okuyucu - v4.3.D2 (Gürültü Filtreli)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -129,8 +129,8 @@
 </head>
 <body>
 
-    <h2>Jannersten Tarayıcı (v4.3 - Part 1)</h2>
-    <p>Saf v4.3 arayüzü aktif.</p>
+    <h2>Jannersten Tarayıcı (v4.3.D2)</h2>
+    <p>Gürültü filtresi aktif. Boş ekran log basmayacak.</p>
 
     <div id="scanner-container">
         <video id="webcam" autoplay playsinline muted></video>
@@ -331,6 +331,7 @@
                             return val >= 2 && val <= 35;
                         });
 
+                        // GÜRÜLTÜ FİLTRESİ: Parça sayısı 9'un altındaysa (boşluk/rastgele çizgi) es geç ve log atma
                         if (parts.length >= 9) {
                             const targetSequence = parts.slice(-9);
                             const blacks = targetSequence.filter(p => p.startsWith("B")).map(p => parseInt(p.substring(1)));
@@ -349,9 +350,9 @@
                                     }
                                 }).join("-");
 
-                                // SAF V4.3 MOTOR + CONSOLE LOG
+                                // Sadece anlamlı ve yeterli uzunluktaki veriler konsola yazdırılır
                                 if (compressedData !== lastLoggedRaw) {
-                                    console.log("👉 TARAMA ÇIKTISI:", compressedData, "=> Örüntü:", pattern);
+                                    console.log("👉 GERÇEK TARAMA ÇIKTISI:", compressedData, "=> Örüntü:", pattern);
                                     lastLoggedRaw = compressedData;
                                 }
 
