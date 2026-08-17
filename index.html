@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jannersten Kart Barkod Okuyucu - v4.3.D5 (Kesin Susturucu)</title>
+    <title>Jannersten Kart Barkod Okuyucu - v4.3.D6 (Canvas Düzeltmeli)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -129,14 +129,19 @@
 </head>
 <body>
 
-    <h2>Jannersten Tarayıcı (v4.3.D5)</h2>
-    <p>Matematiksel genişlik barajı eklendi. Konsol kilitlendi.</p>
+    <h2>Jannersten Tarayıcı (v4.3.D6)</h2>
+    <p>Canvas hatası giderildi, genişlik filtresi aktif.</p>
 
     <div id="scanner-container">
         <video id="webcam" autoplay playsinline muted></video>
         <div id="laser-guide"></div>
     </div>
     
+    <div id="preview-container">
+        <div><small style="color: #ff9900;">Canlı Çizgiler:</small></div>
+        <canvas id="debug-canvas"></canvas>
+    </div>
+
     <div class="btn-group">
         <button id="switch-camera-btn" class="action-btn" onclick="switchCamera()">Kamera Değiştir</button>
         <button id="clear-history-btn" class="action-btn" onclick="clearHistory()">Listeyi Temizle</button>
@@ -332,13 +337,9 @@
                             const whites = targetSequence.filter(p => p.startsWith("W")).map(p => parseInt(p.substring(1)));
 
                             if (blacks.length >= 4) {
-                                // GÜNCELLEME: MILIMETRIK PIKSEL GENIŞLIK BARAJI
                                 const totalBlackWidth = blacks.reduce((a, b) => a + b, 0);
 
-                                // Jannersten gerçek 5 siyah çizgisinin toplam piksel alanı asla 38'den büyük ve 15'ten küçük olamaz.
-                                // Sizin attığınız boş ekran gürültüsünde bu değer 100+ piksel çıktığı için anında elenir.
                                 if (totalBlackWidth >= 15 && totalBlackWidth <= 38) {
-                                    
                                     const avgBlack = blacks.reduce((a, b) => a + b, 0) / blacks.length;
                                     const avgWhite = whites.reduce((a, b) => a + b, 0) / whites.length;
 
