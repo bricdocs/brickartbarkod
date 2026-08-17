@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jannersten Kart Barkod Okuyucu - v4.6.1 (Hata Düzeltildi)</title>
+    <title>Jannersten Kart Barkod Okuyucu - v4.3 (Saf Motor + Log Part 1)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -129,8 +129,8 @@
 </head>
 <body>
 
-    <h2>Jannersten Tarayıcı (v4.6.1)</h2>
-    <p>Tuval hatası giderildi.</p>
+    <h2>Jannersten Tarayıcı (v4.3 - Part 1)</h2>
+    <p>Saf v4.3 arayüzü aktif.</p>
 
     <div id="scanner-container">
         <video id="webcam" autoplay playsinline muted></video>
@@ -349,26 +349,16 @@
                                     }
                                 }).join("-");
 
-                                if (pattern === "I-G-I-G-K-G-I-D-I" && compressedData !== lastLoggedRaw) {
-                                    console.log("👉 ÇAKIŞMA DETAYI (D4 / HT):", compressedData);
+                                // SAF V4.3 MOTOR + CONSOLE LOG
+                                if (compressedData !== lastLoggedRaw) {
+                                    console.log("👉 TARAMA ÇIKTISI:", compressedData, "=> Örüntü:", pattern);
                                     lastLoggedRaw = compressedData;
                                 }
 
                                 dctx.putImageData(debugImgData, 0, 0);
 
-                                let cardFound = "Tanımlanmamış Örüntü: " + pattern;
-                                let isDefined = false;
-
-                                if (pattern === "I-G-I-G-K-G-I-D-I") {
-                                    isDefined = true;
-                                    const maxBar = Math.max(...blacks);
-                                    const minBar = Math.min(...blacks);
-                                    const thicknessRatio = maxBar / minBar;
-                                    cardFound = (thicknessRatio >= 2.5) ? "Karo 4 (D4)" : "Kupa 10 (HT)";
-                                } else {
-                                    isDefined = (typeof JANNERSTEN_DECK_MAP !== 'undefined' && JANNERSTEN_DECK_MAP[pattern]);
-                                    if (isDefined) cardFound = JANNERSTEN_DECK_MAP[pattern];
-                                }
+                                let isDefined = (typeof JANNERSTEN_DECK_MAP !== 'undefined' && JANNERSTEN_DECK_MAP[pattern]);
+                                let cardFound = isDefined ? JANNERSTEN_DECK_MAP[pattern] : "Tanımlanmamış Örüntü: " + pattern;
                                 
                                 if (isDefined || !validPatternFound) {
                                     rawDataText.innerText = compressedData;
