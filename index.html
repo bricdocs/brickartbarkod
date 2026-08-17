@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jannersten Kart Barkod Okuyucu - v4.3.D6 (Canvas Düzeltmeli)</title>
+    <title>Jannersten Kart Barkod Okuyucu - v4.3.D7 (Tam Susturucu)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -129,8 +129,8 @@
 </head>
 <body>
 
-    <h2>Jannersten Tarayıcı (v4.3.D6)</h2>
-    <p>Canvas hatası giderildi, genişlik filtresi aktif.</p>
+    <h2>Jannersten Tarayıcı (v4.3.D7)</h2>
+    <p>Sertleştirilmiş oran filtresi aktif. Boş ekran tamamen sessiz.</p>
 
     <div id="scanner-container">
         <video id="webcam" autoplay playsinline muted></video>
@@ -286,7 +286,7 @@
                 debugCanvas.height = 1; 
                 dctx.clearRect(0, 0, debugCanvas.width, debugCanvas.height);
 
-                for (let y = 0; y < scanHeight; y += 3) {
+                for (let y = 0; y < scanHeight; y += 4) {
                     const rowOffset = y * scanLength * 4;
                     let rowBrightnesses = new Array(scanLength);
                     let minB = 255;
@@ -300,14 +300,14 @@
                         if (b > maxB) maxB = b;
                     }
 
-                    let dynamicThreshold = (minB + maxB) / 2;
-                    if ((maxB - minB) < 45) continue;
+                    // Kontrast barajı sertleştirildi
+                    if ((maxB - minB) < 55) continue;
 
                     let binaryString = "";
                     let debugImgData = dctx.createImageData(scanLength, 1);
 
                     for (let x = 0; x < scanLength; x++) {
-                        const isWhite = rowBrightnesses[x] > dynamicThreshold;
+                        const isWhite = rowBrightnesses[x] > ((minB + maxB) / 2);
                         binaryString += isWhite ? "1" : "0";
                         
                         const idx = x * 4;
@@ -331,22 +331,28 @@
                             return val >= 2 && val <= 35;
                         });
 
-                        if (parts.length >= 9 && parts.length <= 15) {
+                        // Kesin parça aralığı (Jannersten standart gövdesi)
+                        if (parts.length >= 9 && parts.length <= 11) {
                             const targetSequence = parts.slice(-9);
                             const blacks = targetSequence.filter(p => p.startsWith("B")).map(p => parseInt(p.substring(1)));
                             const whites = targetSequence.filter(p => p.startsWith("W")).map(p => parseInt(p.substring(1)));
 
-                            if (blacks.length >= 4) {
+                            // Siyah parça sayısı tam olarak mantıksal eşleşme sunmalı
+                            if (blacks.length >= 4 && whites.length >= 4) {
                                 const totalBlackWidth = blacks.reduce((a, b) => a + b, 0);
+                                const maxSingleBlack = Math.max(...blacks);
 
-                                if (totalBlackWidth >= 15 && totalBlackWidth <= 38) {
-                                    const avgBlack = blacks.reduce((a, b) => a + b, 0) / blacks.length;
+                                // GÜRÜLTÜYÜ KESEN ORAN BARAJI: Tek bir çubuk mantıksız derecede devasa olamaz 
+                                // ve toplam siyah genişlik Jannersten kalıbında kalmalı
+                                if (totalBlackWidth >= 14 && totalBlackWidth <= 35 && maxSingleBlack < 15) {
+                                    
+                                    const avgBlack = totalBlackWidth / blacks.length;
                                     const avgWhite = whites.reduce((a, b) => a + b, 0) / whites.length;
 
                                     const pattern = targetSequence.map(p => {
                                         const val = parseInt(p.substring(1));
                                         if (p.startsWith("B")) {
-                                            return (val > 7) ? "K" : "I"; 
+                                            return (val > 6) ? "K" : "I"; 
                                         } else {
                                             return (val > avgWhite) ? "G" : "D"; 
                                         }
@@ -375,7 +381,7 @@
                                         if (matchCount >= REQUIRED_MATCHES) {
                                             cardNameText.innerText = cardFound;
                                             cardNameText.style.color = isDefined ? "#00ffff" : "#ff9900";
-                                            patternCodeText.innerText = lockedPattern;
+                                           patternCodeText.innerText = lockedPattern;
                                             
                                             if (isDefined) {
                                                 addHistoryItem(cardFound, lockedPattern);
