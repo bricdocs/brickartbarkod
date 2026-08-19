@@ -1,4 +1,4 @@
-/* style.css - v8.5 TEŞHİS MODLU MODEL */
+/* style.css - v8.6 KONSOL TEŞHİS TABANLI MODEL */
 body {
     font-family: Arial, sans-serif;
     text-align: center;
@@ -93,7 +93,7 @@ video {
 #switch-camera-btn { background: #ff9900; color: #111; }
 #clear-history-btn { background: #cc3333; color: #fff; }
 
-#history-panel, #diagnostics-panel {
+#history-panel {
     margin-top: 15px;
     padding: 10px;
     background: #1a1a1a;
@@ -103,8 +103,9 @@ video {
     margin-left: auto;
     margin-right: auto;
     text-align: left;
+    max-height: 150px;
+    overflow-y: auto;
 }
-#history-panel { max-height: 150px; overflow-y: auto; }
 .checkbox-container {
     text-align: left;
     margin-bottom: 8px;
@@ -115,23 +116,18 @@ video {
     gap: 6px;
     cursor: pointer;
 }
-#history-list, #diagnostics-list {
+#history-list {
     list-style-type: none;
     padding: 0;
     margin: 5px 0 0 0;
+    font-size: 1.2em;
     font-family: monospace;
     text-align: left;
 }
-#history-list { font-size: 1.2em; }
-#diagnostics-list { font-size: 0.9em; color: #aaa; }
 #history-list li {
     display: inline-block;
     margin-right: 5px;
     padding: 2px 0;
-}
-#diagnostics-list li {
-    padding: 3px 0;
-    border-bottom: 1px solid #252525;
 }
 #history-list li span.num { color: #ff9900; font-weight: bold; }
 #history-list li span.card { color: #00ffcc; font-weight: bold; }
