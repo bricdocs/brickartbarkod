@@ -107,14 +107,15 @@ video {
     list-style-type: none;
     padding: 0;
     margin: 5px 0 0 0;
-    font-size: 0.85em;
+    font-size: 1.2em; /* %40 Büyütüldü (Eski değer: 0.85em) */
     font-family: monospace;
 }
 #history-list li {
-    padding: 4px 6px;
+    padding: 6px 6px; /* Okunabilirlik için dikey boşluk hafifçe artırıldı */
     border-bottom: 1px solid #282828;
     display: flex;
     justify-content: space-between;
 }
 #history-list li span.card { color: #00ffcc; }
-#history-list li span.pattern { color: #888; font-size: 0.9em; }
+#history-list li span.pattern { color: #888; font-size: 1.0em; } /* Kart ismiyle dengelendi */
+
