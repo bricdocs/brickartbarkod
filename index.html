@@ -8,6 +8,9 @@ v8.1: Okunan kartlar geçmişi dikey listeden yan yana (inline-block)
 v8.2: Liste akışı son okunan kart en başta (prepend) olacak şekilde
       çevrildi. Numaralandırma dinamikleştirildi. Örüntü kodlarını
       varsayılan olarak gizleyen/açan Checkbox seçeneği eklendi.
+v8.3: Tanımlanamayan kartlardaki etiket "TANIMSIZ: " olarak kısaltıldı.
+      Ham Model alanına ekran titremesini engellemek için varsayılan
+      olarak OFF (gizli) başlayan Göster Checkbox seçeneği eklendi.
 ===================================================================
 -->
 <!DOCTYPE html>
@@ -15,13 +18,13 @@ v8.2: Liste akışı son okunan kart en başta (prepend) olacak şekilde
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jannersten Kart Barkod Okuyucu - v8.2 SEÇENEKLİ MODEL</title>
+    <title>Jannersten Kart Barkod Okuyucu - v8.3 SABİT UI MODEL</title>
     <link rel="stylesheet" href="style.css">
     <script src="barkod-data.js"></script>
 </head>
 <body>
 
-    <h2>Jannersten Tarayıcı (v8.2 - Canlı Önizlemeli)</h2>
+    <h2>Jannersten Tarayıcı (v8.3 - Canlı Önizlemeli)</h2>
     <p>Kartı geniş alana yaklaştırın. Aşağıdaki turuncu kutudan canlı çizgileri izleyin.</p>
 
     <div id="scanner-container">
@@ -45,7 +48,13 @@ v8.2: Liste akışı son okunan kart en başta (prepend) olacak şekilde
         <div class="info-row"><strong>Durum:</strong> <span id="status" style="color: yellow;">Kamera başlatılıyor...</span></div>
         <div class="info-row"><strong>Kart:</strong> <span id="card-name" style="color: #00ffcc; font-weight: bold; font-size: 1.2em;">KART BEKLENİYOR...</span></div>
         <div class="info-row"><strong>Örüntü:</strong> <span id="pattern-code" style="color: #00ff00; font-weight: bold;">-</span></div>
-        <div class="info-row"><strong>Ham Model:</strong> <span id="raw-data" class="binary-output">-</span></div>
+        <div class="info-row">
+            <strong>Ham Model:</strong> 
+            <label style="font-size: 0.85em; color: #ff9900; margin-left: 8px; cursor: pointer;">
+                <input type="checkbox" id="show-raw-check" onchange="toggleRawData()"> Göster
+            </label>
+            <span id="raw-data" class="binary-output raw-hidden">-</span>
+        </div>
     </div>
 
     <div id="history-panel">
@@ -139,6 +148,16 @@ v8.2: Liste akışı son okunan kart en başta (prepend) olacak şekilde
                     p.classList.add('pattern-hidden');
                 }
             });
+        }
+
+        function toggleRawData() {
+            const isChecked = document.getElementById('show-raw-check').checked;
+            const rawDataBox = document.getElementById('raw-data');
+            if (isChecked) {
+                rawDataBox.classList.remove('raw-hidden');
+            } else {
+                rawDataBox.classList.add('raw-hidden');
+            }
         }
 
         function clearHistory() {
@@ -270,7 +289,8 @@ v8.2: Liste akışı son okunan kart en başta (prepend) olacak şekilde
                                 
                                 if (isDefined || !validPatternFound) {
                                     rawDataText.innerText = compressedData;
-                                    const cardFound = isDefined ? JANNERSTEN_DECK_MAP[pattern] : "Tanımlanmamış Örüntü: " + pattern;
+                                    // Kelime "TANIMSIZ:" olarak kısaltıldı:
+                                    const cardFound = isDefined ? JANNERSTEN_DECK_MAP[pattern] : "TANIMSIZ: " + pattern;
 
                                     if (pattern === lockedPattern) {
                                         matchCount++;
