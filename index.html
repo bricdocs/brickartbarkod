@@ -110,6 +110,7 @@
             overflow-y: auto;
             font-size: 1.1em; /* GÜNCELLEME: Sadece font boyutu 1.1em yapıldı */
         }
+
         #history-list {
             list-style-type: none;
             padding: 0;
@@ -208,6 +209,7 @@
                 console.log("Ses çalınamadı: ", e);
             }
         }
+
         function addHistoryItem(cardName, pattern) {
             if (cardName === lastLoggedCard) return;
             lastLoggedCard = cardName;
