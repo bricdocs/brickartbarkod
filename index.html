@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jannersten Kart Barkod Okuyucu - v4.3 (Saf Kararlı Sürüm) History Font 1.1em Yaptık</title>
+    <title>Jannersten Kart Barkod Okuyucu - v4.3 (Saf Kararlı Sürüm)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -185,7 +185,6 @@
         let currentFacingMode = "environment";
         let currentStream = null;
         let lastLoggedCard = "";
-        let lastLoggedRaw = ""; 
 
         let audioCtx = null;
         function playBeep() {
@@ -285,6 +284,7 @@
                 debugCanvas.width = scanLength;
                 debugCanvas.height = 1; 
                 dctx.clearRect(0, 0, debugCanvas.width, debugCanvas.height);
+
                 for (let y = 0; y < scanHeight; y += 3) {
                     const rowOffset = y * scanLength * 4;
                     let rowBrightnesses = new Array(scanLength);
@@ -305,8 +305,7 @@
                     let debugImgData = dctx.createImageData(scanLength, 1);
 
                     for (let x = 0; x < scanLength; x++) {
-                        const dynamicThreshold = (minB + maxB) / 2;
-                        const isWhite = rowBrightnesses[x] > dynamicThreshold;
+                        const isWhite = rowBrightnesses[x] > ((minB + maxB) / 2);
                         binaryString += isWhite ? "1" : "0";
                         
                         const idx = x * 4;
@@ -351,11 +350,6 @@
                                             return (val > avgWhite) ? "G" : "D"; 
                                         }
                                     }).join("-");
-
-                                    if (compressedData !== lastLoggedRaw) {
-                                        console.log("👉 TARAMA ÇIKTISI:", compressedData, "=> Örüntü:", pattern);
-                                        lastLoggedRaw = compressedData;
-                                    }
 
                                     dctx.putImageData(debugImgData, 0, 0);
 
