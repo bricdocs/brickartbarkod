@@ -168,15 +168,6 @@
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('hidden-canvas');
         const ctx = canvas.getContext('2d');
-        
-        const debugCanvas = document.getElementById('debug-canvas');
-        const dctx = debugCanvas.getContext('2d');
-
-        const statusText = document.getElementById('status');
-        const cardNameText = document.getElementById('card-name');
-        const patternCodeText = document.getElementById('pattern-code');
-        const rawDataText = document.getElementById('raw-data');
-        const historyList = document.getElementById('history-list');
 
         let lockedPattern = "-";
         let matchCount = 0;
@@ -281,6 +272,10 @@
             currentFacingMode = (currentFacingMode === "environment") ? "user" : "environment";
             startCamera();
         }
+
+        // ELEMENT TANIMLARI DOĞRU YERİNE (PROCESSFRAME ÖNCESİNE) ALINDI
+        const debugCanvas = document.getElementById('debug-canvas');
+        const dctx = debugCanvas.getContext('2d');
 
         function processFrame() {
             if (video.readyState === video.HAVE_ENOUGH_DATA) {
@@ -413,6 +408,7 @@
             requestAnimationFrame(processFrame);
         }
 
+        // HATA VEREN FAZLALIK LASTLOGGEDRAW SATIRI BURADAN TAMAMEN SİLİNDİ
         function resetScannerPanel() {
             matchCount = Math.max(0, matchCount - 1);
             if (matchCount === 0) {
