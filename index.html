@@ -164,7 +164,6 @@
     </div>
 
     <script>
-        // TÜM ELEMENT TANIMLARI EN ÜST GÜVENLİ BÖLGEYE TOPLANDI
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('hidden-canvas');
         const ctx = canvas.getContext('2d');
@@ -318,6 +317,7 @@
                     let debugImgData = dctx.createImageData(scanLength, 1);
 
                     for (let x = 0; x < scanLength; x++) {
+                        // SİZİN GERÇEK ÇALIŞAN SAF MOTOR FORMÜLÜNÜZ GERİ GELDİ
                         const isWhite = rowBrightnesses[x] > ((minB + maxB) / 2);
                         binaryString += isWhite ? "1" : "0";
                         
