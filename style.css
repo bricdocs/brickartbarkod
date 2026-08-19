@@ -1,4 +1,4 @@
-/* style.css - v8.1 YAN YANA LİSTE MODELİ */
+/* style.css - v8.2 GİZLENEBİLİR ÖRÜNTÜ MODELİ */
 body {
     font-family: Arial, sans-serif;
     text-align: center;
@@ -103,6 +103,16 @@ video {
     max-height: 150px;
     overflow-y: auto;
 }
+.checkbox-container {
+    text-align: left;
+    margin-bottom: 8px;
+    font-size: 0.9em;
+    color: #ff9900;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
 #history-list {
     list-style-type: none;
     padding: 0;
@@ -119,5 +129,6 @@ video {
 #history-list li span.num { color: #ff9900; font-weight: bold; }
 #history-list li span.card { color: #00ffcc; font-weight: bold; }
 #history-list li span.pattern { color: #888; font-size: 0.85em; }
+#history-list li span.pattern.pattern-hidden { display: none; }
 #history-list li span.comma { color: #fff; }
 #history-list li:last-child span.comma { display: none; }
