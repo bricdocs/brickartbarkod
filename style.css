@@ -1,4 +1,4 @@
-/* style.css - v8.2 GİZLENEBİLİR ÖRÜNTÜ MODELİ */
+/* style.css - v8.3 KARARLI ARAYÜZ MODELİ */
 body {
     font-family: Arial, sans-serif;
     text-align: center;
@@ -70,6 +70,9 @@ video {
     font-size: 0.85em;
     max-height: 50px;
     overflow-y: auto;
+}
+.binary-output.raw-hidden {
+    display: none !important; /* Ham modeli tamamen kapatır, ekranı oynatmaz */
 }
 .btn-group {
     margin-top: 10px;
