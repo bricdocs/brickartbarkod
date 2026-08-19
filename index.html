@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jannersten Kart Barkod Okuyucu - v8.0</title>
+    <title>Jannersten Kart Barkod Okuyucu - v4.3 (Saf Kararlı Sürüm) History Font 1.1em Yaptık</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -108,29 +108,30 @@
             text-align: left;
             max-height: 150px;
             overflow-y: auto;
-            font-size: 1.1em;
+            font-size: 1.1em; /* GÜNCELLEME: Sadece font boyutu 1.1em yapıldı */
         }
         #history-list {
             list-style-type: none;
             padding: 0;
             margin: 5px 0 0 0;
+            font-size: 0.85em;
             font-family: monospace;
-            text-align: left;
         }
-        .history-item {
-            display: inline-block;
-            white-space: nowrap;
-            margin-bottom: 4px;
+        #history-list li {
+            padding: 4px 6px;
+            border-bottom: 1px solid #282828;
+            display: flex;
+            justify-content: space-between;
         }
-        .history-item span.card { color: #00ffcc; font-weight: bold; }
-        .history-item span.pattern { color: #888; font-size: 0.95em; }
+        #history-list li span.card { color: #00ffcc; }
+        #history-list li span.pattern { color: #888; font-size: 0.9em; }
     </style>
     <script src="barkod-data.js"></script>
 </head>
 <body>
 
-    <h2>Jannersten Tarayıcı (Sürüm v8.0)</h2>
-    <p>Hafızalı yan yana liste modu aktif.</p>
+    <h2>Jannersten Tarayıcı (v4.3 - Canlı Özelleştirilmiş)</h2>
+    <p>Orijinal ve stabil çalışan temel sürüm.</p>
 
     <div id="scanner-container">
         <video id="webcam" autoplay playsinline muted></video>
@@ -138,7 +139,7 @@
     </div>
     
     <div id="preview-container">
-        <div><small style="color: #ff9900;">Canlı Çizgiler:</small></div>
+        <div><small style="color: #ff9900;">Yazılımın Gördüğü Canlı Çizgiler (Siyahlar Kırmızı Çizilir):</small></div>
         <canvas id="debug-canvas"></canvas>
     </div>
 
@@ -158,17 +159,19 @@
 
     <div id="history-panel">
         <strong>Okunan Tanımlı Kartlar Geçmişi:</strong>
-        <div id="history-list">
-            <span style="color: #666; display: block; text-align: center;">Henüz bilinen kart okunmadı</span>
-        </div>
+        <ul id="history-list">
+            <li style="color: #666; text-align: center;">Henüz bilinen kart okunmadı</li>
+        </ul>
     </div>
 
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('hidden-canvas');
         const ctx = canvas.getContext('2d');
+        
         const debugCanvas = document.getElementById('debug-canvas');
         const dctx = debugCanvas.getContext('2d');
+
         const statusText = document.getElementById('status');
         const cardNameText = document.getElementById('card-name');
         const patternCodeText = document.getElementById('pattern-code');
@@ -183,9 +186,6 @@
         let currentStream = null;
         let lastLoggedCard = "";
         let lastLoggedRaw = ""; 
-
-        let okunanDeste = new Set();
-        let historyCounter = 0;
 
         let audioCtx = null;
         function playBeep() {
@@ -210,34 +210,22 @@
             }
         }
         function addHistoryItem(cardName, pattern) {
-            if (okunanDeste.has(cardName)) return;
-            okunanDeste.add(cardName);
+            if (cardName === lastLoggedCard) return;
+            lastLoggedCard = cardName;
 
-            if (historyList.querySelector('span[style*="center"]')) {
+            if (historyList.querySelector('li[style*="center"]')) {
                 historyList.innerHTML = "";
             }
 
-            historyCounter++;
-
-            const span = document.createElement('span');
-            span.className = "history-item"; 
-            
-            if (historyCounter > 1) {
-                historyList.appendChild(document.createTextNode(", "));
-            }
-
-            span.innerHTML = `${historyCounter}- <span class="card">${cardName}</span> <span class="pattern">(${pattern})</span>`;
-            historyList.appendChild(span);
-            
+            const li = document.createElement('li');
+            li.innerHTML = `<span class="card">${cardName}</span> <span class="pattern">[${pattern}]</span>`;
+            historyList.prepend(li);
             playBeep();
         }
 
         function clearHistory() {
-            historyList.innerHTML = '<span style="color: #666; display: block; text-align: center;">Henüz bilinen kart okunmadı</span>';
+            historyList.innerHTML = '<li style="color: #666; text-align: center;">Henüz bilinen kart okunmadı</li>';
             lastLoggedCard = "";
-            lastLoggedRaw = "";
-            historyCounter = 0;
-            okunanDeste.clear();
         }
 
         async function startCamera() {
@@ -317,8 +305,8 @@
                     let debugImgData = dctx.createImageData(scanLength, 1);
 
                     for (let x = 0; x < scanLength; x++) {
-                        // SİZİN GERÇEK ÇALIŞAN SAF MOTOR FORMÜLÜNÜZ GERİ GELDİ
-                        const isWhite = rowBrightnesses[x] > ((minB + maxB) / 2);
+                        const dynamicThreshold = (minB + maxB) / 2;
+                        const isWhite = rowBrightnesses[x] > dynamicThreshold;
                         binaryString += isWhite ? "1" : "0";
                         
                         const idx = x * 4;
