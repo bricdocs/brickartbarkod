@@ -110,7 +110,6 @@
             overflow-y: auto;
             font-size: 1.1em;
         }
-
         #history-list {
             list-style-type: none;
             padding: 0;
@@ -165,9 +164,17 @@
     </div>
 
     <script>
+        // TÜM ELEMENT TANIMLARI EN ÜST GÜVENLİ BÖLGEYE TOPLANDI
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('hidden-canvas');
         const ctx = canvas.getContext('2d');
+        const debugCanvas = document.getElementById('debug-canvas');
+        const dctx = debugCanvas.getContext('2d');
+        const statusText = document.getElementById('status');
+        const cardNameText = document.getElementById('card-name');
+        const patternCodeText = document.getElementById('pattern-code');
+        const rawDataText = document.getElementById('raw-data');
+        const historyList = document.getElementById('history-list');
 
         let lockedPattern = "-";
         let matchCount = 0;
@@ -203,7 +210,6 @@
                 console.log("Ses çalınamadı: ", e);
             }
         }
-
         function addHistoryItem(cardName, pattern) {
             if (okunanDeste.has(cardName)) return;
             okunanDeste.add(cardName);
@@ -273,10 +279,6 @@
             startCamera();
         }
 
-        // ELEMENT TANIMLARI DOĞRU YERİNE (PROCESSFRAME ÖNCESİNE) ALINDI
-        const debugCanvas = document.getElementById('debug-canvas');
-        const dctx = debugCanvas.getContext('2d');
-
         function processFrame() {
             if (video.readyState === video.HAVE_ENOUGH_DATA) {
                 canvas.width = video.videoWidth;
@@ -296,7 +298,6 @@
                 debugCanvas.width = scanLength;
                 debugCanvas.height = 1; 
                 dctx.clearRect(0, 0, debugCanvas.width, debugCanvas.height);
-
                 for (let y = 0; y < scanHeight; y += 3) {
                     const rowOffset = y * scanLength * 4;
                     let rowBrightnesses = new Array(scanLength);
@@ -408,7 +409,6 @@
             requestAnimationFrame(processFrame);
         }
 
-        // HATA VEREN FAZLALIK LASTLOGGEDRAW SATIRI BURADAN TAMAMEN SİLİNDİ
         function resetScannerPanel() {
             matchCount = Math.max(0, matchCount - 1);
             if (matchCount === 0) {
