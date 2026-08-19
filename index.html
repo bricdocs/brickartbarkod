@@ -5,6 +5,9 @@ v8.0: CSS katmanı ayrıştırıldı, harici style.css dosyasına taşındı.
       Geçmiş listesi font büyüklüğü %40 oranında artırıldı (1.2em).
 v8.1: Okunan kartlar geçmişi dikey listeden yan yana (inline-block)
       numaralı ve virgüllü dizi düzenine dönüştürüldü.
+v8.2: Liste akışı son okunan kart en başta (prepend) olacak şekilde
+      çevrildi. Numaralandırma dinamikleştirildi. Örüntü kodlarını
+      varsayılan olarak gizleyen/açan Checkbox seçeneği eklendi.
 ===================================================================
 -->
 <!DOCTYPE html>
@@ -12,13 +15,13 @@ v8.1: Okunan kartlar geçmişi dikey listeden yan yana (inline-block)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jannersten Kart Barkod Okuyucu - v8.1 YAN YANA MODEL</title>
+    <title>Jannersten Kart Barkod Okuyucu - v8.2 SEÇENEKLİ MODEL</title>
     <link rel="stylesheet" href="style.css">
     <script src="barkod-data.js"></script>
 </head>
 <body>
 
-    <h2>Jannersten Tarayıcı (v8.1 - Canlı Önizlemeli)</h2>
+    <h2>Jannersten Tarayıcı (v8.2 - Canlı Önizlemeli)</h2>
     <p>Kartı geniş alana yaklaştırın. Aşağıdaki turuncu kutudan canlı çizgileri izleyin.</p>
 
     <div id="scanner-container">
@@ -46,6 +49,10 @@ v8.1: Okunan kartlar geçmişi dikey listeden yan yana (inline-block)
     </div>
 
     <div id="history-panel">
+        <label class="checkbox-container">
+            <input type="checkbox" id="show-patterns-check" onchange="togglePatterns()">
+            Örüntü Kodlarını Göster ()
+        </label>
         <strong>Okunan Tanımlı Kartlar Geçmişi:</strong>
         <ul id="history-list">
             <li style="color: #666; text-align: center;">Henüz bilinen kart okunmadı</li>
@@ -105,12 +112,33 @@ v8.1: Okunan kartlar geçmişi dikey listeden yan yana (inline-block)
                 historyList.innerHTML = "";
             }
 
-            const currentCount = historyList.querySelectorAll('li').length + 1;
             const li = document.createElement('li');
-            li.innerHTML = `<span class="num">${currentCount}-</span> <span class="card">${cardName}</span> <span class="pattern">(${pattern})</span><span class="comma">, </span>`;
+            const isChecked = document.getElementById('show-patterns-check').checked;
+            const patternClass = isChecked ? "" : "pattern-hidden";
             
-            historyList.appendChild(li);
+            li.innerHTML = `<span class="num"></span><span class="card">${cardName}</span><span class="pattern ${patternClass}">(${pattern})</span><span class="comma">, </span>`;
+            
+            historyList.prepend(li);
+            
+            const allItems = historyList.querySelectorAll('li');
+            const totalItems = allItems.length;
+            allItems.forEach((item, index) => {
+                item.querySelector('.num').innerText = `${totalItems - index}- `;
+            });
+
             playBeep();
+        }
+
+        function togglePatterns() {
+            const isChecked = document.getElementById('show-patterns-check').checked;
+            const patterns = historyList.querySelectorAll('.pattern');
+            patterns.forEach(p => {
+                if (isChecked) {
+                    p.classList.remove('pattern-hidden');
+                } else {
+                    p.classList.add('pattern-hidden');
+                }
+            });
         }
 
         function clearHistory() {
