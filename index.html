@@ -3,136 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jannersten Kart Barkod Okuyucu - v4.3 (Saf Kararlı Sürüm)</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            background: #111;
-            color: #fff;
-            margin: 0;
-            padding: 10px;
-        }
-        #scanner-container {
-            position: relative;
-            width: 100%;
-            max-width: 380px;
-            margin: auto;
-            border: 2px solid #444;
-            background: #000;
-            overflow: hidden;
-        }
-        video {
-            width: 100%;
-            display: block;
-        }
-        #laser-guide {
-            position: absolute;
-            top: 0;
-            left: 10%;
-            width: 80%;
-            height: 260px;
-            border-top: 2px solid #00ffcc;
-            border-bottom: 2px dashed #00ffcc;
-            background: rgba(0, 255, 204, 0.08);
-            box-shadow: 0 0 15px rgba(0, 255, 204, 0.35);
-            pointer-events: none;
-        }
-        #preview-container {
-            margin-top: 10px;
-            text-align: center;
-        }
-        #debug-canvas {
-            border: 2px solid #ff9900;
-            background: #000;
-            width: 80%;
-            max-width: 304px;
-            height: 30px;
-            display: inline-block;
-        }
-        #result-panel {
-            margin-top: 15px;
-            padding: 12px;
-            background: #222;
-            border-radius: 6px;
-            text-align: left;
-            max-width: 356px;
-            margin-left: auto;
-            margin-right: auto;
-            border: 1px solid #333;
-        }
-        .info-row {
-            margin-bottom: 8px;
-            font-size: 0.95em;
-        }
-        .binary-output {
-            font-family: monospace;
-            word-break: break-all;
-            color: #ff9900;
-            background: #000;
-            padding: 5px;
-            display: block;
-            margin-top: 2px;
-            font-size: 0.85em;
-            max-height: 50px;
-            overflow-y: auto;
-        }
-        .btn-group {
-            margin-top: 10px;
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            max-width: 380px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        .action-btn {
-            padding: 8px 14px;
-            border: none;
-            border-radius: 4px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        #switch-camera-btn { background: #ff9900; color: #111; }
-        #clear-history-btn { background: #cc3333; color: #fff; }
-        
-        #history-panel {
-            margin-top: 15px;
-            padding: 10px;
-            background: #1a1a1a;
-            border-radius: 6px;
-            border: 1px solid #333;
-            max-width: 356px;
-            margin-left: auto;
-            margin-right: auto;
-            text-align: left;
-            max-height: 150px;
-            overflow-y: auto;
-            font-size: 1.1em; /* GÜNCELLEME: Sadece font boyutu 1.1em yapıldı */
-        }
-
-        #history-list {
-            list-style-type: none;
-            padding: 0;
-            margin: 5px 0 0 0;
-            font-size: 0.85em;
-            font-family: monospace;
-        }
-        #history-list li {
-            padding: 4px 6px;
-            border-bottom: 1px solid #282828;
-            display: flex;
-            justify-content: space-between;
-        }
-        #history-list li span.card { color: #00ffcc; }
-        #history-list li span.pattern { color: #888; font-size: 0.9em; }
-    </style>
+    <title>Jannersten Kart Barkod Okuyucu - v8.0 SAF MODEL 4.3 KOPYA</title>
+    <link rel="stylesheet" href="style.css">
     <script src="barkod-data.js"></script>
 </head>
 <body>
 
-    <h2>Jannersten Tarayıcı (v4.3 - Canlı Özelleştirilmiş)</h2>
-    <p>Orijinal ve stabil çalışan temel sürüm.</p>
+    <h2>Jannersten Tarayıcı (v8.0 - Canlı Önizlemeli)</h2>
+    <p>Kartı geniş alana yaklaştırın. Aşağıdaki turuncu kutudan canlı çizgileri izleyin.</p>
 
     <div id="scanner-container">
         <video id="webcam" autoplay playsinline muted></video>
@@ -280,7 +158,6 @@
 
                 const imgData = ctx.getImageData(startX, startY, scanLength, scanHeight);
                 const pixels = imgData.data;
-
                 let validPatternFound = false;
                 
                 debugCanvas.width = scanLength;
@@ -301,13 +178,14 @@
                         if (b > maxB) maxB = b;
                     }
 
-                    if ((maxB - minB) < 55) continue;
+                    let dynamicThreshold = (minB + maxB) / 2;
+                    if ((maxB - minB) < 30) continue;
 
                     let binaryString = "";
                     let debugImgData = dctx.createImageData(scanLength, 1);
 
                     for (let x = 0; x < scanLength; x++) {
-                        const isWhite = rowBrightnesses[x] > ((minB + maxB) / 2);
+                        const isWhite = rowBrightnesses[x] > dynamicThreshold;
                         binaryString += isWhite ? "1" : "0";
                         
                         const idx = x * 4;
@@ -331,61 +209,52 @@
                             return val >= 2 && val <= 35;
                         });
 
-                        if (parts.length >= 9 && parts.length <= 13) {
+                        if (parts.length >= 9) {
                             const targetSequence = parts.slice(-9);
                             const blacks = targetSequence.filter(p => p.startsWith("B")).map(p => parseInt(p.substring(1)));
                             const whites = targetSequence.filter(p => p.startsWith("W")).map(p => parseInt(p.substring(1)));
 
-                            if (blacks.length >= 4 && whites.length >= 4) {
-                                const totalBlackWidth = blacks.reduce((a, b) => a + b, 0);
-                                const maxSingleBlack = Math.max(...blacks);
+                            if (blacks.length >= 4) {
+                                const avgWhite = whites.reduce((a, b) => a + b, 0) / whites.length;
 
-                                if (totalBlackWidth >= 14 && totalBlackWidth <= 35 && maxSingleBlack < 15) {
-                                    const avgBlack = totalBlackWidth / blacks.length;
-                                    const avgWhite = whites.reduce((a, b) => a + b, 0) / whites.length;
-
-                                    const pattern = targetSequence.map(p => {
-                                        const val = parseInt(p.substring(1));
-                                        if (p.startsWith("B")) {
-                                            return (val > 7) ? "K" : "I"; 
-                                        } else {
-                                            return (val > avgWhite) ? "G" : "D"; 
-                                        }
-                                    }).join("-");
-
-                                    dctx.putImageData(debugImgData, 0, 0);
-
-                                    let isDefined = (typeof JANNERSTEN_DECK_MAP !== 'undefined' && JANNERSTEN_DECK_MAP[pattern]);
-                                    let cardFound = isDefined ? JANNERSTEN_DECK_MAP[pattern] : "Tanımlanmamış Örüntü: " + pattern;
-                                    
-                                    if (isDefined || !validPatternFound) {
-                                        rawDataText.innerText = compressedData;
-
-                                        if (pattern === lockedPattern) {
-                                            matchCount++;
-                                        } else {
-                                            lockedPattern = pattern;
-                                            matchCount = 1;
-                                        }
-
-                                        if (matchCount >= REQUIRED_MATCHES) {
-                                            cardNameText.innerText = cardFound;
-                                            cardNameText.style.color = isDefined ? "#00ffff" : "#ff9900";
-                                            patternCodeText.innerText = lockedPattern;
-                                            
-                                            if (isDefined) {
-                                                addHistoryItem(cardFound, lockedPattern);
-                                            }
-                                        }
-                                        
-                                        validPatternFound = true;
+                                const pattern = targetSequence.map(p => {
+                                    const val = parseInt(p.substring(1));
+                                    if (p.startsWith("B")) {
+                                        return (val > 7) ? "K" : "I"; 
+                                    } else {
+                                        return (val > avgWhite) ? "G" : "D"; 
                                     }
+                                }).join("-");
+
+                                dctx.putImageData(debugImgData, 0, 0);
+                                const isDefined = (typeof JANNERSTEN_DECK_MAP !== 'undefined' && JANNERSTEN_DECK_MAP[pattern]);
+                                
+                                if (isDefined || !validPatternFound) {
+                                    rawDataText.innerText = compressedData;
+                                    const cardFound = isDefined ? JANNERSTEN_DECK_MAP[pattern] : "Tanımlanmamış Örüntü: " + pattern;
+
+                                    if (pattern === lockedPattern) {
+                                        matchCount++;
+                                    } else {
+                                        lockedPattern = pattern;
+                                        matchCount = 1;
+                                    }
+
+                                    if (matchCount >= REQUIRED_MATCHES) {
+                                        cardNameText.innerText = cardFound;
+                                        cardNameText.style.color = isDefined ? "#00ffff" : "#ff9900";
+                                        patternCodeText.innerText = lockedPattern;
+                                        
+                                        if (isDefined) {
+                                            addHistoryItem(cardFound, lockedPattern);
+                                        }
+                                    }
+                                    validPatternFound = true;
                                 }
                             }
                         }
                     }
                 }
-
                 if (!validPatternFound) {
                     resetScannerPanel();
                 }
@@ -399,6 +268,7 @@
                 cardNameText.innerText = "KART BEKLENİYOR...";
                 cardNameText.style.color = "#888";
                 patternCodeText.innerText = "-";
+                lastLoggedCard = "";
             }
         }
 
