@@ -85,8 +85,8 @@ const JANNERSTEN_DECK_MAP = {
    "I-G-I-G-K-G-I-D-I": "D4"      //EKLEME 20.08.2026 CEPTEN
 
     "I-D-K-G-K-G-K-D-K-G-I": "HK",     // 11 Harfli Gerçek Tam Kod
-    "I-D-I-G-K-G-K-D-I-G-I": "HK",     // 20.08.2026 EKLENDI GOZLE
-    //"D-I-G-K-G-K-D-I-D": "HK",
+    "I-D-I-D-K-D-K-D-I-D-I": "HK"     // 20.08.2026 EKLENDI GOZLE
+   
     
 
 
