@@ -72,7 +72,7 @@ const JANNERSTEN_DECK_MAP = {
     "I-G-I-G-I-D-K-G-I": "S4",    // GÖZLE EKLEME 20.08.2026
 
     "I-G-K-D-K-D-K-D-K-D-K": "H10",    //EKLEME 20.08.2026
-    "I-G-I-D-I-D-K-D-I-D-I": "H10",
+    //"I-G-I-D-I-D-K-D-I-D-I": "H10",
     "I-G-K-D-K-D-K-D-K-D-I": "H10"     // MEVCUT 11 Harfli Gerçek Tam Kod //"I-G-I-G-K-G-I-D-I": "HT",        //D4 MUKERRERDI DUZELTILDI >> I-G-I-G-K-G-I-D-I
 
 
