@@ -24,7 +24,7 @@ const JANNERSTEN_DECK_MAP = {
     "I-D-K-G-I-G-I-G-I": "DA",
     "I-G-I-G-I-G-K-D-I": "D2",
     "D-I-D-I-D-I-G-K-D": "D3",
-    "G-I-D-I-D-K-D-D-I": "D4",    //HT MUKERRERDI DUZELTILDI >> I-G-I-G-K-G-I-D-I
+
     "I-D-I-D-K-G-I-D-I": "D5",
     "I-D-I-D-I-G-I-D-I": "D6",
     "I-G-I-D-I-G-I-D-I": "D7",
@@ -80,7 +80,11 @@ const JANNERSTEN_DECK_MAP = {
    "K-D-K-G-K-G-K-D-I": "C6",    //EKLEME 20.08.2026 LOGDAN
    "I-D-K-G-I-G-K-D-I": "C6"    //EKLEME 20.08.2026 LOGDAN
 
-
+   "G-I-D-I-D-K-D-D-I": "D4",     //MEVCUT HT MUKERRERDI DUZELTILDI >> I-G-I-G-K-G-I-D-I       
+   "I-G-K-G-K-G-K-D-I": "D4",     //EKLEME 20.08.2026 LOGDAN
+   "I-G-K-G-K-G-I-D-I": "D4",     //EKLEME 20.08.2026 LOGDAN
+   "I-G-K-G-K-G-K-D-K": "D4",      //EKLEME 20.08.2026 LOGDAN
+   "I-G-I-G-K-G-I-D-I": "D4"      //EKLEME 20.08.2026 CEPTEN
 
 
 
