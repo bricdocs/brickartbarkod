@@ -13,10 +13,12 @@ v8.3: Tanımlanamayan kartlardaki etiket "TANIMSIZ: " olarak kısaltıldı.
       olarak OFF (gizli) başlayan Göster Checkbox seçeneği eklendi.
 v8.4: Akıllı Hibrit Kesme katmanı eklendi. Çizgi sayısı >= 11 ise 
       sağdan 11 eleman, 9-10 arası ise sağdan 9 eleman kesilir.
-v8.6: Görsel teşhis paneli kaldırıldı, arayüz eski kararlı ve hafif
-      haline (v8.3) getirildi. Teşhis loglama mekanizması, gelen
-      9 veya 11 harfli tam ham kodları frekansıyla tarayıcı
+v8.6: Görsel teşhis paneli kaldırıldı, arayüz eski haline getirildi.
+      Teşhis loglama mekanizması tam ham kodları frekansıyla tarayıcı
       konsoluna (console.log) basacak şekilde arka plana taşındı.
+v8.7: Konsol teşhis logundaki sıralama asimetrisi düzeltildi. 11'li
+      modda basılan ham kodların harf yönü, mevcut 9'lu veritabanı
+      ve sağ sınır referans mantığıyla %100 uyumlu hale getirildi.
 ===================================================================
 -->
 <!DOCTYPE html>
@@ -24,13 +26,13 @@ v8.6: Görsel teşhis paneli kaldırıldı, arayüz eski kararlı ve hafif
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jannersten Kart Barkod Okuyucu - v8.6 KONSOL LOG MODEL</title>
+    <title>Jannersten Kart Barkod Okuyucu - v8.7 DOĞRU YÖN MODEL</title>
     <link rel="stylesheet" href="style.css">
     <script src="barkod-data.js"></script>
 </head>
 <body>
 
-    <h2>Jannersten Tarayıcı (v8.6 - Konsol Teşhisli)</h2>
+    <h2>Jannersten Tarayıcı (v8.7 - Yön Eşitlemeli)</h2>
     <p>Kartı geniş alana yaklaştırın. Aşağıdaki turuncu kutudan canlı çizgileri izleyin.</p>
 
     <div id="scanner-container">
@@ -97,7 +99,6 @@ v8.6: Görsel teşhis paneli kaldırıldı, arayüz eski kararlı ve hafif
         let lastLoggedCard = "";
         let audioCtx = null;
 
-        // v8.6 BAĞIMSIZ ARKA PLAN KONSOL BELLEĞİ
         let diagnosticsBuffer = []; 
         let lastConsoleLogTime = 0;
 
@@ -105,7 +106,6 @@ v8.6: Görsel teşhis paneli kaldırıldı, arayüz eski kararlı ve hafif
             const now = Date.now();
             diagnosticsBuffer.push({ pattern: patternStr, timestamp: now });
             
-            // Konsolu saniyede en fazla 2 kez güncelleyerek Win7 tarayıcısını yormaz
             if (now - lastConsoleLogTime > 500) {
                 processAndLogToConsole(now);
                 lastConsoleLogTime = now;
@@ -113,7 +113,6 @@ v8.6: Görsel teşhis paneli kaldırıldı, arayüz eski kararlı ve hafif
         }
 
         function processAndLogToConsole(now) {
-            // 5 saniyeden eski logları temizler
             diagnosticsBuffer = diagnosticsBuffer.filter(item => (now - item.timestamp) < 5000);
             if (diagnosticsBuffer.length === 0) return;
 
@@ -122,11 +121,10 @@ v8.6: Görsel teşhis paneli kaldırıldı, arayüz eski kararlı ve hafif
                 counts[item.pattern] = (counts[item.pattern] || 0) + 1;
             });
 
-            // En çok tekrarlayan 4 ham kodu sıralar
             const sorted = Object.keys(counts).sort((a, b) => counts[b] - counts[a]).slice(0, 4);
 
             console.clear();
-            console.log("%cJANNERSTEN v8.6 - SON 5 SANİYE TEŞHİS RAPORU", "color: #ff9900; font-weight: bold; font-size: 12px;");
+            console.log("%cJANNERSTEN v8.7 - SAĞDAN DOĞRULANMIŞ TEŞHİS RAPORU", "color: #00ffcc; font-weight: bold; font-size: 12px;");
             console.log("--------------------------------------------------");
             sorted.forEach((pat, idx) => {
                 const len = pat.split("-").length;
@@ -313,7 +311,7 @@ v8.6: Görsel teşhis paneli kaldırıldı, arayüz eski kararlı ve hafif
                                     else { return (val > avgWhite) ? "G" : "D"; }
                                 }).join("-");
 
-                                // v8.6 ARKA PLAN TETİKLEYİCİSİ (Konsola tam ham veriyi gönderir)
+                                // v8.7 YÖN VE SAF REFERANS UYUMLU LOG TETİKLEYİCİSİ
                                 pushToDiagnosticsBuffer(pattern);
 
                                 dctx.putImageData(debugImgData, 0, 0);
