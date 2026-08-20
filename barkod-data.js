@@ -15,7 +15,7 @@ const JANNERSTEN_DECK_MAP = {
     "I-G-K-D-I-G-K-D-I": "C7",
     "I-G-I-D-K-G-K-D-I": "C8",
     "I-D-I-G-K-G-K-D-I": "C9",
-    "K-I-D-K-G-K-G-I-D": "CT",
+    //"K-I-D-K-G-K-G-I-D": "CT",
     "I-D-I-D-K-G-K-D-I": "CJ",
     "I-D-I-D-K-G-K-G-I": "CQ",
     "I-G-K-D-K-G-I-D-I": "CK",
