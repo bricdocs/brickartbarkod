@@ -45,7 +45,8 @@ const JANNERSTEN_DECK_MAP = {
     "I-D-K-G-I-D-I-D-I": "H7",
     "I-D-K-G-K-D-I-D-I": "H8",
     "K-I-G-K-G-K-D-I-D": "H9",
-    "I-G-I-G-K-G-I-D-I": "HT",//D4 MUKERRERDI DUZELTILDI >> I-G-I-G-K-G-I-D-I
+    "I-G-K-D-K-D-K-D-K-D-I": "H10" // 11 Harfli Gerçek Tam Kod
+    //"I-G-I-G-K-G-I-D-I": "HT",//D4 MUKERRERDI DUZELTILDI >> I-G-I-G-K-G-I-D-I
     "I-G-I-D-K-D-I-D-I": "HJ",
     "D-I-D-I-G-K-D-I-D": "HQ",
     "D-I-G-K-G-K-D-I-D": "HK",
