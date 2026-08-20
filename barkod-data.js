@@ -24,7 +24,7 @@ const JANNERSTEN_DECK_MAP = {
     "I-D-K-G-I-G-I-G-I": "DA",
     "I-G-I-G-I-G-K-D-I": "D2",
     "D-I-D-I-D-I-G-K-D": "D3",
-    "G-I-D-I-D-K-D-D-I": "D4",//HT MUKERRERDI DUZELTILDI >> I-G-I-G-K-G-I-D-I
+    "G-I-D-I-D-K-D-D-I": "D4",    //HT MUKERRERDI DUZELTILDI >> I-G-I-G-K-G-I-D-I
     "I-D-I-D-K-G-I-D-I": "D5",
     "I-D-I-D-I-G-I-D-I": "D6",
     "I-G-I-D-I-G-I-D-I": "D7",
@@ -45,21 +45,18 @@ const JANNERSTEN_DECK_MAP = {
     "I-D-K-G-I-D-I-D-I": "H7",
     "I-D-K-G-K-D-I-D-I": "H8",
     "K-I-G-K-G-K-D-I-D": "H9",
-    "I-G-K-D-K-D-K-D-K-D-I": "H10", // 11 Harfli Gerçek Tam Kod
-    //"I-G-I-G-K-G-I-D-I": "HT",//D4 MUKERRERDI DUZELTILDI >> I-G-I-G-K-G-I-D-I
+
     "I-G-I-D-K-D-I-D-I": "HJ",
     "D-I-D-I-G-K-D-I-D": "HQ",
-    "I-D-K-G-K-G-K-D-K-G-I": "HK", // 11 Harfli Gerçek Tam Kod
+    "I-D-K-G-K-G-K-D-K-G-I": "HK",     // 11 Harfli Gerçek Tam Kod
     //"D-I-G-K-G-K-D-I-D": "HK",
 
     //SPADES
     "I-D-I-D-I-G-I-G-I": "SA",
     "I-G-I-D-K-G-I-G-I": "S2",
     "I-D-I-G-K-G-I-G-I": "S3",
-    "D-I-G-I-G-I-D-K-G": "S4",//MEVCUT SORUNLU
-    "I-G-K-G-K-D-K-G-I": "S4",//  S4 PC LOGDAN ALINDI
-    "I-G-I-G-I-D-K-G-I": "S4",// GÖZLE
-    "I-G-I-G-K-D-I-G-I": "S5",//"G-K-I-D-I-D-K-D-I"
+
+    "I-G-I-G-K-D-I-G-I": "S5",    //"G-K-I-D-I-D-K-D-I"
     "I-D-K-G-K-D-I-G-I": "S6",
     "I-G-K-G-I-D-I-G-I": "S7",
     "D-I-D-I-G-I-D-I-G": "S8",
@@ -67,6 +64,22 @@ const JANNERSTEN_DECK_MAP = {
     "I-D-K-G-I-D-K-G-I": "ST",
     "I-G-K-D-I-D-K-G-I": "SJ",
     "I-D-K-D-I-D-I-G-I": "SQ",
-    "D-I-G-I-D-I-D-I-G": "SK"
+    "D-I-G-I-D-I-D-I-G": "SK",
+
+//SORUNLU KARTLAR 
+    "D-I-G-I-G-I-D-K-G": "S4",    //MEVCUT SORUNLU
+    "I-G-K-G-K-D-K-G-I": "S4",    //S4 PC LOGDAN ALINDI EKLEME 20.08.2026
+    "I-G-I-G-I-D-K-G-I": "S4",    // GÖZLE EKLEME 20.08.2026
+
+    "I-G-K-D-K-D-K-D-K-D-K": "H10",    //EKLEME 20.08.2026
+    "I-G-I-D-I-D-K-D-I-D-I": "H10",
+    "I-G-K-D-K-D-K-D-K-D-I": "H10"     // MEVCUT 11 Harfli Gerçek Tam Kod //"I-G-I-G-K-G-I-D-I": "HT",        //D4 MUKERRERDI DUZELTILDI >> I-G-I-G-K-G-I-D-I
+
+
+
+
+
+
+
 
 };
