@@ -78,7 +78,7 @@ const JANNERSTEN_DECK_MAP = {
    "K-I-D-K-G-I-G-K-D": "C6",    //MEVCUT
    "I-D-K-G-K-G-K-D-I": "C6",    //EKLEME 20.08.2026 LOGDAN
    "K-D-K-G-K-G-K-D-I": "C6",    //EKLEME 20.08.2026 LOGDAN
-   "I-D-K-G-I-G-K-D-I": "C6"    //EKLEME 20.08.2026 LOGDAN
+   "I-D-K-G-I-G-K-D-I": "C6",    //EKLEME 20.08.2026 LOGDAN
 
    "G-I-D-I-D-K-D-D-I": "D4",     //MEVCUT HT MUKERRERDI DUZELTILDI >> I-G-I-G-K-G-I-D-I       
    "I-G-K-G-K-G-K-D-I": "D4",     //EKLEME 20.08.2026 LOGDAN
