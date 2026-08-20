@@ -13,9 +13,10 @@ v8.3: Tanımlanamayan kartlardaki etiket "TANIMSIZ: " olarak kısaltıldı.
       olarak OFF (gizli) başlayan Göster Checkbox seçeneği eklendi.
 v8.4: Akıllı Hibrit Kesme katmanı eklendi. Çizgi sayısı >= 11 ise 
       sağdan 11 eleman, 9-10 arası ise sağdan 9 eleman kesilir.
-v8.5: Bağımsız Teşhis Log Paneli eklendi. Ana motor kararına asla
-      dokunmadan, son 5 saniyede kameraya takılan ham örüntüleri
-      (9 veya 11 harfli) frekans ağırlıklı sıralayan ayna eklendi.
+v8.6: Görsel teşhis paneli kaldırıldı, arayüz eski kararlı ve hafif
+      haline (v8.3) getirildi. Teşhis loglama mekanizması, gelen
+      9 veya 11 harfli tam ham kodları frekansıyla tarayıcı
+      konsoluna (console.log) basacak şekilde arka plana taşındı.
 ===================================================================
 -->
 <!DOCTYPE html>
@@ -23,13 +24,13 @@ v8.5: Bağımsız Teşhis Log Paneli eklendi. Ana motor kararına asla
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jannersten Kart Barkod Okuyucu - v8.5 TEŞHİS MODU</title>
+    <title>Jannersten Kart Barkod Okuyucu - v8.6 KONSOL LOG MODEL</title>
     <link rel="stylesheet" href="style.css">
     <script src="barkod-data.js"></script>
 </head>
 <body>
 
-    <h2>Jannersten Tarayıcı (v8.5 - Teşhis Modlu)</h2>
+    <h2>Jannersten Tarayıcı (v8.6 - Konsol Teşhisli)</h2>
     <p>Kartı geniş alana yaklaştırın. Aşağıdaki turuncu kutudan canlı çizgileri izleyin.</p>
 
     <div id="scanner-container">
@@ -73,13 +74,6 @@ v8.5: Bağımsız Teşhis Log Paneli eklendi. Ana motor kararına asla
         </ul>
     </div>
 
-    <div id="diagnostics-panel">
-        <strong style="color: #ff9900;">Teşhis: Son 5 Saniyede Yakalanan Ham Örüntüler</strong>
-        <ul id="diagnostics-list">
-            <li style="color: #666;">Kamera akışı bekleniyor...</li>
-        </ul>
-    </div>
-
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('hidden-canvas');
@@ -93,7 +87,6 @@ v8.5: Bağımsız Teşhis Log Paneli eklendi. Ana motor kararına asla
         const patternCodeText = document.getElementById('pattern-code');
         const rawDataText = document.getElementById('raw-data');
         const historyList = document.getElementById('history-list');
-        const diagnosticsList = document.getElementById('diagnostics-list');
 
         let lockedPattern = "-";
         let matchCount = 0;
@@ -104,39 +97,42 @@ v8.5: Bağımsız Teşhis Log Paneli eklendi. Ana motor kararına asla
         let lastLoggedCard = "";
         let audioCtx = null;
 
-        // v8.5 BAĞIMSIZ LOG BELLEĞİ VE YÖNETİMİ
+        // v8.6 BAĞIMSIZ ARKA PLAN KONSOL BELLEĞİ
         let diagnosticsBuffer = []; 
+        let lastConsoleLogTime = 0;
 
         function pushToDiagnosticsBuffer(patternStr) {
-            diagnosticsBuffer.push({ pattern: patternStr, timestamp: Date.now() });
-            updateDiagnosticsUI();
+            const now = Date.now();
+            diagnosticsBuffer.push({ pattern: patternStr, timestamp: now });
+            
+            // Konsolu saniyede en fazla 2 kez güncelleyerek Win7 tarayıcısını yormaz
+            if (now - lastConsoleLogTime > 500) {
+                processAndLogToConsole(now);
+                lastConsoleLogTime = now;
+            }
         }
 
-        function updateDiagnosticsUI() {
-            const now = Date.now();
-            // 5 saniyeden eski logları süpürür
+        function processAndLogToConsole(now) {
+            // 5 saniyeden eski logları temizler
             diagnosticsBuffer = diagnosticsBuffer.filter(item => (now - item.timestamp) < 5000);
+            if (diagnosticsBuffer.length === 0) return;
 
-            if (diagnosticsBuffer.length === 0) {
-                diagnosticsList.innerHTML = '<li style="color: #666;">Örüntü aranıyor...</li>';
-                return;
-            }
-
-            // Frekans sayımı yapar
             const counts = {};
             diagnosticsBuffer.forEach(item => {
                 counts[item.pattern] = (counts[item.pattern] || 0) + 1;
             });
 
-            // En çok tekrarlayandan en aza doğru sıralar
+            // En çok tekrarlayan 4 ham kodu sıralar
             const sorted = Object.keys(counts).sort((a, b) => counts[b] - counts[a]).slice(0, 4);
 
-            diagnosticsList.innerHTML = "";
-            sorted.forEach(pat => {
-                const li = document.createElement('li');
-                li.innerHTML = `<span style="color:#00ffcc;">${pat}</span> <span style="color:#888;">(Görülme: ${counts[pat]})</span>`;
-                diagnosticsList.appendChild(li);
+            console.clear();
+            console.log("%cJANNERSTEN v8.6 - SON 5 SANİYE TEŞHİS RAPORU", "color: #ff9900; font-weight: bold; font-size: 12px;");
+            console.log("--------------------------------------------------");
+            sorted.forEach((pat, idx) => {
+                const len = pat.split("-").length;
+                console.log(`${idx + 1}. [${len} Harf] Kod: ${pat} -> Görülme Frekansı: ${counts[pat]}`);
             });
+            console.log("--------------------------------------------------");
         }
 
         function playBeep() {
@@ -317,7 +313,7 @@ v8.5: Bağımsız Teşhis Log Paneli eklendi. Ana motor kararına asla
                                     else { return (val > avgWhite) ? "G" : "D"; }
                                 }).join("-");
 
-                                // v8.5 GÖZLEMCİ TETİKLEYİCİSİ (Karar mekanizmasına asla dokunmaz)
+                                // v8.6 ARKA PLAN TETİKLEYİCİSİ (Konsola tam ham veriyi gönderir)
                                 pushToDiagnosticsBuffer(pattern);
 
                                 dctx.putImageData(debugImgData, 0, 0);
