@@ -44,8 +44,7 @@ const JANNERSTEN_DECK_MAP = {
     "I-G-K-G-I-D-I-D-I": "H6",
     "I-D-K-G-I-D-I-D-I": "H7",
     "I-D-K-G-K-D-I-D-I": "H8",
-    "K-I-G-K-G-K-D-I-D": "H9",
-
+    
     "I-G-I-D-K-D-I-D-I": "HJ",
     "D-I-D-I-G-K-D-I-D": "HQ",
 
@@ -85,8 +84,11 @@ const JANNERSTEN_DECK_MAP = {
    "I-G-I-G-K-G-I-D-I": "D4",      //EKLEME 20.08.2026 CEPTEN
 
     "I-D-K-G-K-G-K-D-K-G-I": "HK",     // 11 Harfli Gerçek Tam Kod
-    "I-D-I-D-K-D-K-D-I-D-I": "HK"     // 20.08.2026 EKLENDI GOZLE
-   
+    "I-D-I-D-K-D-K-D-I-D-I": "HK",     // 20.08.2026 EKLENDI GOZLE
+
+    "K-I-G-K-G-K-D-I-D": "H9",        //MEVCUT
+    "I-G-K-G-K-D-I-D-I": "H9",    // 20.08.2026 EKLENDI GOZLE
+    "I-G-K-G-K-D-K-D-I": "H9"    // 20.08.2026 EKLENDI LOGDAN
     
 
 
