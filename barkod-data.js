@@ -11,7 +11,7 @@ const JANNERSTEN_DECK_MAP = {
     "I-G-I-D-I-G-K-G-I": "C3",
     "D-I-D-I-D-I-D-K-G": "C4",
     "I-D-K-I-G-K-D-K-D": "C5",
-    "K-I-D-K-G-I-G-K-D": "C6",
+ 
     "I-G-K-D-I-G-K-D-I": "C7",
     "I-G-I-D-K-G-K-D-I": "C8",
     "I-D-I-G-K-G-K-D-I": "C9",
@@ -69,14 +69,16 @@ const JANNERSTEN_DECK_MAP = {
 //SORUNLU KARTLAR 
     "D-I-G-I-G-I-D-K-G": "S4",    //MEVCUT SORUNLU
     "I-G-K-G-K-D-K-G-I": "S4",    //S4 PC LOGDAN ALINDI EKLEME 20.08.2026
-    "I-G-I-G-I-D-K-G-I": "S4",    // GÖZLE EKLEME 20.08.2026
+    "I-G-I-G-I-D-K-G-I": "S4",    // GÖZLE EKLEME VE CEPTEN 20.08.2026
 
     "I-G-K-D-K-D-K-D-K-D-K": "H10",    //EKLEME 20.08.2026
     //"I-G-I-D-I-D-K-D-I-D-I": "H10",
-    "I-G-K-D-K-D-K-D-K-D-I": "H10"     // MEVCUT 11 Harfli Gerçek Tam Kod //"I-G-I-G-K-G-I-D-I": "HT",        //D4 MUKERRERDI DUZELTILDI >> I-G-I-G-K-G-I-D-I
+    "I-G-K-D-K-D-K-D-K-D-I": "H10",     // MEVCUT 11 Harfli Gerçek Tam Kod //"I-G-I-G-K-G-I-D-I": "HT",        //D4 MUKERRERDI DUZELTILDI >> I-G-I-G-K-G-I-D-I
 
-
-
+   "K-I-D-K-G-I-G-K-D": "C6",    //MEVCUT
+   "I-D-K-G-K-G-K-D-I": "C6",    //EKLEME 20.08.2026 LOGDAN
+   "K-D-K-G-K-G-K-D-I": "C6",    //EKLEME 20.08.2026 LOGDAN
+   "I-D-K-G-I-G-K-D-I": "C6"    //EKLEME 20.08.2026 LOGDAN
 
 
 
