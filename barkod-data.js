@@ -99,7 +99,10 @@ const JANNERSTEN_DECK_MAP = {
     "I-G-K-D-K-D-I": "C5", // Konsol 1. Sıra (7 Harfli Gerçek Saha Parmak İzi)
 
     // barkod-data.js - DK (Karo Papazı) Kesin ve Nihai Tanımı
-    "I-D-I-D-I-D-I-D-I-D-I-D-I": "DK" // 13 Harfli Gerçek Tam Kod
+    "I-D-I-D-I-D-I-D-I-D-I-D-I": "DK", // 13 Harfli Gerçek Tam Kod
+    // barkod-data.js - DK (Karo Papazı) Kesin ve Nihai Saha Tanımı
+    "I-D-I-D-I-D-I-D-I-D-I-D-I": "DK", // Teorik 13 Harfli Tam Kod (Açık Işık Modu)
+    "D-K-D-K-G-K-D-K-D-K-D": "DK"      // Konsol 1. Sıra (11 Harfli Gerçek Saha Kilit Kodu)
 
 
 
