@@ -96,7 +96,10 @@ const JANNERSTEN_DECK_MAP = {
     // barkod-data.js - C5 (Sinek 5) Kesin Kararlı Tanımı
     "I-G-K-G-K-G-I": "C5", // 7 Harfli Gerçek Tam Kod
     // barkod-data.js - C5 (Sinek 5) Kesin ve Nihai Saha Tanımı
-    "I-G-K-D-K-D-I": "C5" // Konsol 1. Sıra (7 Harfli Gerçek Saha Parmak İzi)
+    "I-G-K-D-K-D-I": "C5", // Konsol 1. Sıra (7 Harfli Gerçek Saha Parmak İzi)
+
+    // barkod-data.js - DK (Karo Papazı) Kesin ve Nihai Tanımı
+    "I-D-I-D-I-D-I-D-I-D-I-D-I": "DK" // 13 Harfli Gerçek Tam Kod
 
 
 
