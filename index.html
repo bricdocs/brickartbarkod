@@ -9,9 +9,9 @@ v8.13: Tarihçenin silinmesi engellendi, yön başlıkları (--- KUZEY ---) ekle
 v8.14: 2 Saniyelik (2000 ms) Akıllı Zaman Kilidi (Cooldown) zırhı entegre edildi.
 v8.15: Mükerrer kart algılandığında History listesine kalıcı kırmızı uyarı basıldı.
 v8.16: Mükerrer kartlar için bağımsız ses motoru eklendi.
-v8.17: Kaba hata sesi yumuşak çift tonlu akustik "Bip-bop" (Soft Chime) tonuna çevrildi.
-       History listesine aynı mükerrer uyarı satırının yüzlerce kez basılması engellendi, 
-       kart kamera önünde sabit kaldıkça sadece 1 adet tekil uyarı basma zırhı eklendi.
+v8.17: Kaba hata sesi akustik "Bip-bop" tonuna çevrildi. Tekil uyarı basma eklendi.
+v8.18: v8.17 sürümünde updateBridgeUI fonksiyonu içine kaçan hatalı "NCN" 
+       yazım hatası (bug) temizlendi. Doğru sayaç referansı ("N") geri yüklendi.
 ===================================================================
 -->
 <!DOCTYPE html>
@@ -19,13 +19,13 @@ v8.17: Kaba hata sesi yumuşak çift tonlu akustik "Bip-bop" (Soft Chime) tonuna
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jannersten Kart Barkod Okuyucu - v8.17 TEKİL UYARILI MODEL</title>
+    <title>Jannersten Kart Barkod Okuyucu - v8.18 GÜNCEL MODEL</title>
     <link rel="stylesheet" href="style.css">
     <script src="barkod-data.js"></script>
 </head>
 <body>
 
-    <h2>Jannersten Tarayıcı (v8.17 - Akustik Teşhisli)</h2>
+    <h2>Jannersten Tarayıcı (v8.18 - Hata Düzeltmeli)</h2>
     
     <!-- 🃏 BRİÇ MOBİL CANLI SAYAÇ VE YÖN PANELİ -->
     <div id="bridge-dashboard">
@@ -115,13 +115,13 @@ v8.17: Kaba hata sesi yumuşak çift tonlu akustik "Bip-bop" (Soft Chime) tonuna
         let lastLoggedSnapshot = ""; 
 
         // ===================================================================
-        // 🃏 v8.17 BRİÇ SEANS HAFIZASI VE TEKİL RAPORLAMA KİLİDİ KATMANI
+        // 🃏 v8.18 BRİÇ SEANS HAFIZASI VE HATA DÜZELTMELİ KONTROLÖR KATMANI
         // ===================================================================
         let bridgeBordData = { "N": [], "E": [], "S": [], "W": [] };
         let currentDirection = "N"; 
         let currentDirectionHeaderAdded = false; 
         let lastReadTime = 0; 
-        let lastErrorCard = ""; // Aynı mükerrer kartın listeyi şişirmesini engelleyen kilit hafıza
+        let lastErrorCard = ""; 
 
         function isCardAlreadyReadAnywhere(cardName) {
             return bridgeBordData["N"].includes(cardName) ||
@@ -148,18 +148,19 @@ v8.17: Kaba hata sesi yumuşak çift tonlu akustik "Bip-bop" (Soft Chime) tonuna
                 document.getElementById(`dir-box-${currentDirection}`).className = "direction-box active-dir";
                 currentDirectionHeaderAdded = false; 
                 lastLoggedCard = "";
-                lastErrorCard = ""; // Yön değişince hata kilidini temizle
+                lastErrorCard = ""; 
                 updateBridgeUI();
             }
         }
 
+        // v8.18 DÜZELTME: NCN ifadesi silindi, temiz yön ("N") geri yüklendi!
         function updateBridgeUI() {
             const dirNames = { "N": "KUZEY (N)", "E": "DOĞU (E)", "S": "GÜNEY (S)", "W": "BATI (W)", "DONE": "BORD BİTTİ" };
             if (currentDirection !== "DONE") {
                 activeDirLbl.innerText = `${dirNames[currentDirection]} TARANIYOR`;
                 activeDirLbl.style.color = "#ff9900";
             }
-            document.getElementById('count-N').innerText = bridgeBordData["NCN"].length || bridgeBordData["N"].length;
+            document.getElementById('count-N').innerText = bridgeBordData["N"].length;
             document.getElementById('count-E').innerText = bridgeBordData["E"].length;
             document.getElementById('count-S').innerText = bridgeBordData["S"].length;
             document.getElementById('count-W').innerText = bridgeBordData["W"].length;
@@ -174,12 +175,9 @@ v8.17: Kaba hata sesi yumuşak çift tonlu akustik "Bip-bop" (Soft Chime) tonuna
                 return; 
             }
 
-            // v8.17 TEKİL MÜKERRER ZIRHI: Eğer bu mükerrer kart az önce listeye yazıldıysa 2. kez yazma, dondur!
             if (isCardAlreadyReadAnywhere(cardName)) {
-                if (cardName === lastErrorCard) {
-                    return; // Kart kamera önünde sabit kaldıkça listede yeni satır açmaz, sesi tekrar çalmaz!
-                }
-                lastErrorCard = cardName; // Kartı hata kilidine al
+                if (cardName === lastErrorCard) { return; }
+                lastErrorCard = cardName; 
 
                 if (historyList.querySelector('li[style*="center"]')) { historyList.innerHTML = ""; }
                 
@@ -188,7 +186,7 @@ v8.17: Kaba hata sesi yumuşak çift tonlu akustik "Bip-bop" (Soft Chime) tonuna
                 errorLi.innerText = `[MÜKERRER REDDEDİLDİ]: ${cardName} zaten okutulmuş!`;
                 historyList.prepend(errorLi);
                 
-                playErrorBeep(); // Kibar akustik "Bip-bop" sesini sadece 1 kez çalar
+                playErrorBeep(); 
                 return; 
             }
 
@@ -204,7 +202,7 @@ v8.17: Kaba hata sesi yumuşak çift tonlu akustik "Bip-bop" (Soft Chime) tonuna
             }
 
             bridgeBordData[currentDirection].push(cardName);
-            lastErrorCard = ""; // Temiz kart okunduğunda hata kilidini boşa çıkar
+            lastErrorCard = ""; 
             updateBridgeUI();
 
             const li = document.createElement('li');
@@ -276,7 +274,7 @@ v8.17: Kaba hata sesi yumuşak çift tonlu akustik "Bip-bop" (Soft Chime) tonuna
             const currentSnapshot = sorted.map(pat => `${pat}:${counts[pat]}`).join("|");
             if (currentSnapshot === lastLoggedSnapshot) return; lastLoggedSnapshot = currentSnapshot;
             console.clear();
-            console.log("%c[v8.17 SABİT PANEL] - SON 5 SANİYE FREKANS RAPORU", "color: #00ffcc; font-weight: bold; font-size: 12px;");
+            console.log("%c[v8.18 SABİT PANEL] - SON 5 SANİYE FREKANS RAPORU", "color: #00ffcc; font-weight: bold; font-size: 12px;");
             console.log("--------------------------------------------------");
             sorted.forEach((pat, idx) => { const len = pat.split("-").length; console.log(`${idx + 1}. [${len} Harf] Kod: ${pat} -> %cFrekans: ${counts[pat]}`, "color: #ff9900; font-weight: bold;"); });
             console.log("--------------------------------------------------");
@@ -306,27 +304,17 @@ v8.17: Kaba hata sesi yumuşak çift tonlu akustik "Bip-bop" (Soft Chime) tonuna
             } catch (e) { console.log("Ses hatası: ", e); }
         }
 
-        // 🎵 v8.17 GÜNCELLEME: KİBAR ÇİFT TONLU AKUSTİK HATA SESİ (Soft Chime - "Bip-bop")
         function playErrorBeep() {
             try {
                 if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
                 if (audioCtx.state === 'suspended') { audioCtx.resume(); }
-                
-                const osc = audioCtx.createOscillator(); 
-                const gain = audioCtx.createGain();
-                osc.type = 'sine'; // En pürüzsüz dalga formu (Kulağı asla tırmalamaz)
-                
-                // Çift ton efekti: İlk 0.08 saniye 600Hz (Bip), sonraki süreç 450Hz (Bop)
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                osc.type = 'sine'; 
                 osc.frequency.setValueAtTime(600, audioCtx.currentTime);
                 osc.frequency.setValueAtTime(450, audioCtx.currentTime + 0.08);
-                
-                gain.gain.setValueAtTime(0.35, audioCtx.currentTime); // Yumuşak ses seviyesi
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.28); // Sesi yumuşatarak bitirir
-                
-                osc.connect(gain); 
-                gain.connect(audioCtx.destination); 
-                osc.start(); 
-                osc.stop(audioCtx.currentTime + 0.28); 
+                gain.gain.setValueAtTime(0.35, audioCtx.currentTime); 
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.28); 
+                osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.28); 
             } catch (e) { console.log("Ses hatası: ", e); }
         }
 
