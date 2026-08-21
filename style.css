@@ -1,4 +1,4 @@
-/* style.css - v8.10 MOBİL PANEL MODELİ */
+/* style.css - v8.11-C5 KONTROLLÜ HİBRİT MODEL */
 body {
     font-family: Arial, sans-serif;
     text-align: center;
@@ -140,7 +140,6 @@ video {
 #history-list li span.comma { color: #fff; }
 #history-list li:last-child span.comma { display: none; }
 
-/* 📱 CEP TELEFONU MOBİL POP-UP PANEL TASARIMI */
 #database-view-panel {
     display: none;
     position: fixed;
