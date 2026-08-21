@@ -8,9 +8,10 @@ v8.12: Briç turnuva modu, küresel mükerrerlik zırhı ve otomatik vites kurul
 v8.13: Tarihçenin silinmesi engellendi, yön başlıkları (--- KUZEY ---) eklendi.
 v8.14: 2 Saniyelik (2000 ms) Akıllı Zaman Kilidi (Cooldown) zırhı entegre edildi.
 v8.15: Mükerrer kart algılandığında History listesine kalıcı kırmızı uyarı basıldı.
-v8.16: İşitsel geri bildirim ikiye bölündü. Temiz kartlar için ince bir "BİP", 
-       mükerrer kartlar için ise tamamen bağımsız, düşük frekanslı (320Hz)
-       kalın bir "DIT" hata ses jeneratörü kurularak sahada tam kontrol sağlandı.
+v8.16: Mükerrer kartlar için bağımsız ses motoru eklendi.
+v8.17: Kaba hata sesi yumuşak çift tonlu akustik "Bip-bop" (Soft Chime) tonuna çevrildi.
+       History listesine aynı mükerrer uyarı satırının yüzlerce kez basılması engellendi, 
+       kart kamera önünde sabit kaldıkça sadece 1 adet tekil uyarı basma zırhı eklendi.
 ===================================================================
 -->
 <!DOCTYPE html>
@@ -18,13 +19,13 @@ v8.16: İşitsel geri bildirim ikiye bölündü. Temiz kartlar için ince bir "B
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jannersten Kart Barkod Okuyucu - v8.16 ÇİFT SESLİ MODEL</title>
+    <title>Jannersten Kart Barkod Okuyucu - v8.17 TEKİL UYARILI MODEL</title>
     <link rel="stylesheet" href="style.css">
     <script src="barkod-data.js"></script>
 </head>
 <body>
 
-    <h2>Jannersten Tarayıcı (v8.16 - Çift Sesli Teşhis)</h2>
+    <h2>Jannersten Tarayıcı (v8.17 - Akustik Teşhisli)</h2>
     
     <!-- 🃏 BRİÇ MOBİL CANLI SAYAÇ VE YÖN PANELİ -->
     <div id="bridge-dashboard">
@@ -114,12 +115,13 @@ v8.16: İşitsel geri bildirim ikiye bölündü. Temiz kartlar için ince bir "B
         let lastLoggedSnapshot = ""; 
 
         // ===================================================================
-        // 🃏 v8.16 BRİÇ SEANS HAFIZASI VE ÇİFT SESLİ DUPLİKATÖR KATMANI
+        // 🃏 v8.17 BRİÇ SEANS HAFIZASI VE TEKİL RAPORLAMA KİLİDİ KATMANI
         // ===================================================================
         let bridgeBordData = { "N": [], "E": [], "S": [], "W": [] };
         let currentDirection = "N"; 
         let currentDirectionHeaderAdded = false; 
         let lastReadTime = 0; 
+        let lastErrorCard = ""; // Aynı mükerrer kartın listeyi şişirmesini engelleyen kilit hafıza
 
         function isCardAlreadyReadAnywhere(cardName) {
             return bridgeBordData["N"].includes(cardName) ||
@@ -146,6 +148,7 @@ v8.16: İşitsel geri bildirim ikiye bölündü. Temiz kartlar için ince bir "B
                 document.getElementById(`dir-box-${currentDirection}`).className = "direction-box active-dir";
                 currentDirectionHeaderAdded = false; 
                 lastLoggedCard = "";
+                lastErrorCard = ""; // Yön değişince hata kilidini temizle
                 updateBridgeUI();
             }
         }
@@ -156,7 +159,7 @@ v8.16: İşitsel geri bildirim ikiye bölündü. Temiz kartlar için ince bir "B
                 activeDirLbl.innerText = `${dirNames[currentDirection]} TARANIYOR`;
                 activeDirLbl.style.color = "#ff9900";
             }
-            document.getElementById('count-N').innerText = bridgeBordData["N"].length;
+            document.getElementById('count-N').innerText = bridgeBordData["NCN"].length || bridgeBordData["N"].length;
             document.getElementById('count-E').innerText = bridgeBordData["E"].length;
             document.getElementById('count-S').innerText = bridgeBordData["S"].length;
             document.getElementById('count-W').innerText = bridgeBordData["W"].length;
@@ -171,10 +174,13 @@ v8.16: İşitsel geri bildirim ikiye bölündü. Temiz kartlar için ince bir "B
                 return; 
             }
 
-            // v8.16 İŞTİSEL VE GÖRSEL MÜKERRER KİLİDİ: Mükerrer kartta kalın DIT sesi tetiklenir
+            // v8.17 TEKİL MÜKERRER ZIRHI: Eğer bu mükerrer kart az önce listeye yazıldıysa 2. kez yazma, dondur!
             if (isCardAlreadyReadAnywhere(cardName)) {
-                console.log(`%c[MÜKERRER REDDEDİLDİ]: ${cardName} destede zaten kayıtlı!`, "color: #cc3333; font-weight:bold;");
-                
+                if (cardName === lastErrorCard) {
+                    return; // Kart kamera önünde sabit kaldıkça listede yeni satır açmaz, sesi tekrar çalmaz!
+                }
+                lastErrorCard = cardName; // Kartı hata kilidine al
+
                 if (historyList.querySelector('li[style*="center"]')) { historyList.innerHTML = ""; }
                 
                 const errorLi = document.createElement('li');
@@ -182,8 +188,7 @@ v8.16: İşitsel geri bildirim ikiye bölündü. Temiz kartlar için ince bir "B
                 errorLi.innerText = `[MÜKERRER REDDEDİLDİ]: ${cardName} zaten okutulmuş!`;
                 historyList.prepend(errorLi);
                 
-                // v8.16 Ekleme: Kalın hata sesini saniyede çal
-                playErrorBeep(); 
+                playErrorBeep(); // Kibar akustik "Bip-bop" sesini sadece 1 kez çalar
                 return; 
             }
 
@@ -199,6 +204,7 @@ v8.16: İşitsel geri bildirim ikiye bölündü. Temiz kartlar için ince bir "B
             }
 
             bridgeBordData[currentDirection].push(cardName);
+            lastErrorCard = ""; // Temiz kart okunduğunda hata kilidini boşa çıkar
             updateBridgeUI();
 
             const li = document.createElement('li');
@@ -219,6 +225,7 @@ v8.16: İşitsel geri bildirim ikiye bölündü. Temiz kartlar için ince bir "B
                 currentDirection = "N";
                 currentDirectionHeaderAdded = false;
                 lastReadTime = 0;
+                lastErrorCard = "";
                 lastLoggedCard = "";
                 historyList.innerHTML = '<li style="color: #666; text-align: center;">Henüz seans başlatılmadı</li>';
                 
@@ -269,7 +276,7 @@ v8.16: İşitsel geri bildirim ikiye bölündü. Temiz kartlar için ince bir "B
             const currentSnapshot = sorted.map(pat => `${pat}:${counts[pat]}`).join("|");
             if (currentSnapshot === lastLoggedSnapshot) return; lastLoggedSnapshot = currentSnapshot;
             console.clear();
-            console.log("%c[v8.16 SABİT PANEL] - SON 5 SANİYE FREKANS RAPORU", "color: #00ffcc; font-weight: bold; font-size: 12px;");
+            console.log("%c[v8.17 SABİT PANEL] - SON 5 SANİYE FREKANS RAPORU", "color: #00ffcc; font-weight: bold; font-size: 12px;");
             console.log("--------------------------------------------------");
             sorted.forEach((pat, idx) => { const len = pat.split("-").length; console.log(`${idx + 1}. [${len} Harf] Kod: ${pat} -> %cFrekans: ${counts[pat]}`, "color: #ff9900; font-weight: bold;"); });
             console.log("--------------------------------------------------");
@@ -299,19 +306,28 @@ v8.16: İşitsel geri bildirim ikiye bölündü. Temiz kartlar için ince bir "B
             } catch (e) { console.log("Ses hatası: ", e); }
         }
 
-        // v8.16 YENİ EKLEME: KALIN DIT HATA SES ÜRETİCİSİ (320Hz)
+        // 🎵 v8.17 GÜNCELLEME: KİBAR ÇİFT TONLU AKUSTİK HATA SESİ (Soft Chime - "Bip-bop")
         function playErrorBeep() {
             try {
                 if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
                 if (audioCtx.state === 'suspended') { audioCtx.resume(); }
-                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-                osc.type = 'sawtooth'; // Endüstriyel daha pürüzlü ses formu
-                osc.frequency.setValueAtTime(320, audioCtx.currentTime); // Düşük kalın frekans
-                gain.gain.setValueAtTime(0.5, audioCtx.currentTime); // Ses şiddeti
-                osc.connect(gain); gain.connect(audioCtx.destination); 
+                
+                const osc = audioCtx.createOscillator(); 
+                const gain = audioCtx.createGain();
+                osc.type = 'sine'; // En pürüzsüz dalga formu (Kulağı asla tırmalamaz)
+                
+                // Çift ton efekti: İlk 0.08 saniye 600Hz (Bip), sonraki süreç 450Hz (Bop)
+                osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+                osc.frequency.setValueAtTime(450, audioCtx.currentTime + 0.08);
+                
+                gain.gain.setValueAtTime(0.35, audioCtx.currentTime); // Yumuşak ses seviyesi
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.28); // Sesi yumuşatarak bitirir
+                
+                osc.connect(gain); 
+                gain.connect(audioCtx.destination); 
                 osc.start(); 
-                osc.stop(audioCtx.currentTime + 0.35); // Bir tık daha uzun hata tonu
-            } catch (e) { console.log("Hata sesi hatası: ", e); }
+                osc.stop(audioCtx.currentTime + 0.28); 
+            } catch (e) { console.log("Ses hatası: ", e); }
         }
 
         async function startCamera() {
