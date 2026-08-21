@@ -17,17 +17,16 @@ v8.6: Görsel teşhis paneli kaldırıldı, arayüz eski haline getirildi.
       Teşhis loglama mekanizması tam ham kodları frekansıyla tarayıcı
       konsoluna (console.log) basacak şekilde arka plana taşındı.
 v8.7: Konsol teşhis logundaki sıralama asimetrisi düzeltildi. 11'li
-      modda basılan ham kodların harf yönü, mevcut 9'lu veritabanı
-      ve sağ sınır referans mantığıyla %100 uyumlu hale getirildi.
+      modda basılan ham kodların harf yönü, mevcut 9'lu veritabanı.
 v8.8: Otomatik konsol temizliği iptal edildi. Arayüze mavi renkli
       "Konsolu Temizle" butonu eklendi. Log motorunun kilidi açıldı.
 v8.9: Konsolun aşağı kayarak şişmesi engellendi. Gelişmiş anlık anlık
       snapshot kontrolüyle, konsolda sadece 4 satır sabit tutuldu.
 v8.10: Cep telefonları için kamera görüntüsünü aşağı itmeyen, ekranın
        üzerinde yüzen (Pop-up/Modal) "Veritabanını Göster" paneli eklendi.
-v8.11-C5: Sadece C5 kartı için 3 kademeli akıllı şanzıman kuruldu.
-          Çizgi sayısı 7 veya 8 ise sağdan 7 eleman kesilerek C5'in
-          7 basamaklı gerçek kodunun yakalanması sağlandı.
+v8.11-DK: DK kartını kurtarmak için 4 kademeli tam hibrit motor kuruldu.
+          Çizgi sayısı >= 13 ise sağdan 13 eleman kesilerek DK'nın 13
+          basamaklı gerçek kodunun ayrıştırılması sağlandı.
 ===================================================================
 -->
 <!DOCTYPE html>
@@ -35,13 +34,13 @@ v8.11-C5: Sadece C5 kartı için 3 kademeli akıllı şanzıman kuruldu.
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jannersten Kart Barkod Okuyucu - v8.11-C5 KONTROL MODELİ</title>
+    <title>Jannersten Kart Barkod Okuyucu - v8.11-DK HİBRİT VİTES SURUMU</title>
     <link rel="stylesheet" href="style.css">
     <script src="barkod-data.js"></script>
 </head>
 <body>
 
-    <h2>Jannersten Tarayıcı (v8.11-C5 - Kontrollü Adım)</h2>
+    <h2>Jannersten Tarayıcı (v8.11-DK - 4 Kademeli Şanzıman)</h2>
     <p>Kartı geniş alana yaklaştırın. Aşağıdaki turuncu kutudan canlı çizgileri izleyin.</p>
 
     <div id="scanner-container">
@@ -194,7 +193,7 @@ v8.11-C5: Sadece C5 kartı için 3 kademeli akıllı şanzıman kuruldu.
             lastLoggedSnapshot = currentSnapshot;
 
             console.clear();
-            console.log("%c[v8.11-C5 SABİT PANEL] - SON 5 SANİYE FREKANS RAPORU", "color: #00ffcc; font-weight: bold; font-size: 12px;");
+            console.log("%c[v8.11-DK SABİT PANEL] - SON 5 SANİYE FREKANS RAPORU", "color: #00ffcc; font-weight: bold; font-size: 12px;");
             console.log("--------------------------------------------------");
             sorted.forEach((pat, idx) => {
                 const len = pat.split("-").length;
@@ -361,17 +360,18 @@ v8.11-C5: Sadece C5 kartı için 3 kademeli akıllı şanzıman kuruldu.
                             return val >= 2 && val <= 35;
                         });
 
-                        // v8.11-C5 SEÇİCİ KESME ŞANZIMANI
+                        // v8.11-DK DÖRT KADEMELİ AKILLI ŞANZIMAN
                         let targetSequence = null;
-                        if (parts.length >= 11) { targetSequence = parts.slice(-11); } 
+                        if (parts.length >= 13) { targetSequence = parts.slice(-13); } // DK için 13'lü geniş kademe
+                        else if (parts.length >= 11) { targetSequence = parts.slice(-11); } 
                         else if (parts.length >= 9) { targetSequence = parts.slice(-9); }
-                        else if (parts.length >= 7) { targetSequence = parts.slice(-7); } // C5 için 7'li kademe
+                        else if (parts.length >= 7) { targetSequence = parts.slice(-7); } 
 
                         if (targetSequence) {
                             const blacks = targetSequence.filter(p => p.startsWith("B")).map(p => parseInt(p.substring(1)));
                             const whites = targetSequence.filter(p => p.startsWith("W")).map(p => parseInt(p.substring(1)));
 
-                            if (blacks.length >= 3) { // 7 elemanlı C5'te en az 3-4 siyah bar için filtre esnetildi
+                            if (blacks.length >= 3) { 
                                 const avgWhite = whites.reduce((a, b) => a + b, 0) / whites.length;
 
                                 const pattern = targetSequence.map(p => {
