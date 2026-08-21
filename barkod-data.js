@@ -94,7 +94,10 @@ const JANNERSTEN_DECK_MAP = {
     "K-D-K-G-K-G-K-D-K": "CT",     // 20.08.2026 EKLENDI LOGDAN
 
     // barkod-data.js - C5 (Sinek 5) Kesin Kararlı Tanımı
-    "I-G-K-G-K-G-I": "C5" // 7 Harfli Gerçek Tam Kod
+    "I-G-K-G-K-G-I": "C5", // 7 Harfli Gerçek Tam Kod
+    // barkod-data.js - C5 (Sinek 5) Kesin ve Nihai Saha Tanımı
+    "I-G-K-D-K-D-I": "C5" // Konsol 1. Sıra (7 Harfli Gerçek Saha Parmak İzi)
+
 
 
 
