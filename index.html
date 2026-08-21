@@ -24,8 +24,10 @@ v8.8: Otomatik konsol temizliği iptal edildi. Arayüze mavi renkli
 v8.9: Konsolun aşağı kayarak şişmesi engellendi. Gelişmiş anlık anlık
       snapshot kontrolüyle, konsolda sadece 4 satır sabit tutuldu.
 v8.10: Cep telefonları için kamera görüntüsünü aşağı itmeyen, ekranın
-       üzerinde yüzen (Pop-up/Modal) mobil uyumlu "Veritabanını Göster"
-       paneli ve butonu entegre edildi.
+       üzerinde yüzen (Pop-up/Modal) "Veritabanını Göster" paneli eklendi.
+v8.11-C5: Sadece C5 kartı için 3 kademeli akıllı şanzıman kuruldu.
+          Çizgi sayısı 7 veya 8 ise sağdan 7 eleman kesilerek C5'in
+          7 basamaklı gerçek kodunun yakalanması sağlandı.
 ===================================================================
 -->
 <!DOCTYPE html>
@@ -33,13 +35,13 @@ v8.10: Cep telefonları için kamera görüntüsünü aşağı itmeyen, ekranın
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jannersten Kart Barkod Okuyucu - v8.10 MOBİL POPUP MODEL</title>
+    <title>Jannersten Kart Barkod Okuyucu - v8.11-C5 KONTROL MODELİ</title>
     <link rel="stylesheet" href="style.css">
     <script src="barkod-data.js"></script>
 </head>
 <body>
 
-    <h2>Jannersten Tarayıcı (v8.10 - Mobil Pop-up'lı)</h2>
+    <h2>Jannersten Tarayıcı (v8.11-C5 - Kontrollü Adım)</h2>
     <p>Kartı geniş alana yaklaştırın. Aşağıdaki turuncu kutudan canlı çizgileri izleyin.</p>
 
     <div id="scanner-container">
@@ -85,7 +87,6 @@ v8.10: Cep telefonları için kamera görüntüsünü aşağı itmeyen, ekranın
         </ul>
     </div>
 
-    <!-- 📱 CEP TELEFONUNUN ÜZERİNDE YÜZECEK GİZLİ POP-UP PANEL KATMANI -->
     <div id="database-view-panel">
         <div id="db-panel-header">
             <strong style="color: #00ffcc; font-size: 1.0em;">Canlı Sözlük Hafızası</strong>
@@ -121,7 +122,6 @@ v8.10: Cep telefonları için kamera görüntüsünü aşağı itmeyen, ekranın
         let lastConsoleLogTime = 0;
         let lastLoggedSnapshot = ""; 
 
-        // v8.10 MOBİL POP-UP VERİTABANI MOTORU
         function toggleDatabaseView() {
             const dbPanel = document.getElementById('database-view-panel');
             const dbList = document.getElementById('database-view-list');
@@ -194,7 +194,7 @@ v8.10: Cep telefonları için kamera görüntüsünü aşağı itmeyen, ekranın
             lastLoggedSnapshot = currentSnapshot;
 
             console.clear();
-            console.log("%c[v8.10 SABİT PANEL] - SON 5 SANİYE FREKANS RAPORU", "color: #00ffcc; font-weight: bold; font-size: 12px;");
+            console.log("%c[v8.11-C5 SABİT PANEL] - SON 5 SANİYE FREKANS RAPORU", "color: #00ffcc; font-weight: bold; font-size: 12px;");
             console.log("--------------------------------------------------");
             sorted.forEach((pat, idx) => {
                 const len = pat.split("-").length;
@@ -361,15 +361,17 @@ v8.10: Cep telefonları için kamera görüntüsünü aşağı itmeyen, ekranın
                             return val >= 2 && val <= 35;
                         });
 
+                        // v8.11-C5 SEÇİCİ KESME ŞANZIMANI
                         let targetSequence = null;
                         if (parts.length >= 11) { targetSequence = parts.slice(-11); } 
                         else if (parts.length >= 9) { targetSequence = parts.slice(-9); }
+                        else if (parts.length >= 7) { targetSequence = parts.slice(-7); } // C5 için 7'li kademe
 
                         if (targetSequence) {
                             const blacks = targetSequence.filter(p => p.startsWith("B")).map(p => parseInt(p.substring(1)));
                             const whites = targetSequence.filter(p => p.startsWith("W")).map(p => parseInt(p.substring(1)));
 
-                            if (blacks.length >= 4) {
+                            if (blacks.length >= 3) { // 7 elemanlı C5'te en az 3-4 siyah bar için filtre esnetildi
                                 const avgWhite = whites.reduce((a, b) => a + b, 0) / whites.length;
 
                                 const pattern = targetSequence.map(p => {
