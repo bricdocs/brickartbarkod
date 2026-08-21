@@ -4,14 +4,13 @@ VERSİYON/CHANGELOG KAYDI:
 v8.0: CSS katmanı ayrıştırıldı, harici style.css dosyasına taşındı.
 v8.4: Akıllı Hibrit Kesme katmanı eklendi (7, 9, 11, 13 basamaklı).
 v8.10: Cep telefonları için yüzen Pop-up "Veritabanı" paneli eklendi.
-v8.12: Briç turnuva modu, küresel mükerrerlik zırhı ve 13 karta 
-       ulaşıldığında otomatik yön şelalesi (N->E->S->W) kuruldu.
-v8.13: Yön geçişlerinde tarihçenin silinmesi kesin olarak engellendi.
-       Arayüz listesine dinamik yön başlıkları (--- KUZEY ---) eklendi.
-v8.14: 2 Saniyelik (2000 milisaniye) Akıllı Zaman Kilidi (Cooldown)
-       zırhı entegre edildi. Başarılı bir biplemeden sonraki 2 saniye
-       boyunca el hareketi ve yansımadan doğan sahte çift tetiklenmeler
-       kesin olarak engellendi.
+v8.12: Briç turnuva modu, küresel mükerrerlik zırhı ve otomatik vites kuruldu.
+v8.13: Tarihçenin silinmesi engellendi, yön başlıkları (--- KUZEY ---) eklendi.
+v8.14: 2 Saniyelik (2000 ms) Akıllı Zaman Kilidi (Cooldown) zırhı entegre edildi.
+v8.15: Mükerrer kart algılandığında History listesine kalıcı kırmızı uyarı basıldı.
+v8.16: İşitsel geri bildirim ikiye bölündü. Temiz kartlar için ince bir "BİP", 
+       mükerrer kartlar için ise tamamen bağımsız, düşük frekanslı (320Hz)
+       kalın bir "DIT" hata ses jeneratörü kurularak sahada tam kontrol sağlandı.
 ===================================================================
 -->
 <!DOCTYPE html>
@@ -19,13 +18,13 @@ v8.14: 2 Saniyelik (2000 milisaniye) Akıllı Zaman Kilidi (Cooldown)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jannersten Kart Barkod Okuyucu - v8.14 ZAMAN KİLİTLİ MODEL</title>
+    <title>Jannersten Kart Barkod Okuyucu - v8.16 ÇİFT SESLİ MODEL</title>
     <link rel="stylesheet" href="style.css">
     <script src="barkod-data.js"></script>
 </head>
 <body>
 
-    <h2>Jannersten Tarayıcı (v8.14 - 2sn Zaman Kilitli)</h2>
+    <h2>Jannersten Tarayıcı (v8.16 - Çift Sesli Teşhis)</h2>
     
     <!-- 🃏 BRİÇ MOBİL CANLI SAYAÇ VE YÖN PANELİ -->
     <div id="bridge-dashboard">
@@ -115,12 +114,12 @@ v8.14: 2 Saniyelik (2000 milisaniye) Akıllı Zaman Kilidi (Cooldown)
         let lastLoggedSnapshot = ""; 
 
         // ===================================================================
-        // 🃏 v8.14 BRİÇ SEANS HAFIZASI VE 2 SANİYE ZAMAN KİLİTLİ MOTOR KATMANI
+        // 🃏 v8.16 BRİÇ SEANS HAFIZASI VE ÇİFT SESLİ DUPLİKATÖR KATMANI
         // ===================================================================
         let bridgeBordData = { "N": [], "E": [], "S": [], "W": [] };
         let currentDirection = "N"; 
         let currentDirectionHeaderAdded = false; 
-        let lastReadTime = 0; // En son başarılı bipleme zamanını tutan kilit damgası
+        let lastReadTime = 0; 
 
         function isCardAlreadyReadAnywhere(cardName) {
             return bridgeBordData["N"].includes(cardName) ||
@@ -166,16 +165,25 @@ v8.14: 2 Saniyelik (2000 milisaniye) Akıllı Zaman Kilidi (Cooldown)
         function addHistoryItem(cardName, pattern) {
             if (currentDirection === "DONE") return;
 
-            // ⏱️ v8.14 SIKI ZAMAN KİLİDİ ZIRHI: Son biplemeden sonra 2 saniye (2000 ms) geçmediyse YENİ KARTI BLOKE ET
             const now = Date.now();
             if (now - lastReadTime < 2000) {
                 console.log("%c[ZAMAN KİLİDİ ENGELLEDİ]: El hareketi/parlama süzüldü.", "color: #888;");
-                return; // Sessizce okumayı iptal eder, biplemez, listeye asla eklemez!
+                return; 
             }
 
-            // Küresel Mükerrerlik Filtresi: Kart destede varsa anında kes
+            // v8.16 İŞTİSEL VE GÖRSEL MÜKERRER KİLİDİ: Mükerrer kartta kalın DIT sesi tetiklenir
             if (isCardAlreadyReadAnywhere(cardName)) {
                 console.log(`%c[MÜKERRER REDDEDİLDİ]: ${cardName} destede zaten kayıtlı!`, "color: #cc3333; font-weight:bold;");
+                
+                if (historyList.querySelector('li[style*="center"]')) { historyList.innerHTML = ""; }
+                
+                const errorLi = document.createElement('li');
+                errorLi.style.cssText = "display: block; color: #ff3333; font-size: 0.85em; font-weight: bold; margin: 2px 0; padding-left: 5px; border-left: 3px solid #ff3333;";
+                errorLi.innerText = `[MÜKERRER REDDEDİLDİ]: ${cardName} zaten okutulmuş!`;
+                historyList.prepend(errorLi);
+                
+                // v8.16 Ekleme: Kalın hata sesini saniyede çal
+                playErrorBeep(); 
                 return; 
             }
 
@@ -201,10 +209,7 @@ v8.14: 2 Saniyelik (2000 milisaniye) Akıllı Zaman Kilidi (Cooldown)
             historyList.prepend(li);
             
             playBeep();
-            
-            // ⏱️ Zaman damgasını kilitle (2 saniyelik geri sayımı başlat)
             lastReadTime = now; 
-            
             checkAndAdvanceDirection();
         }
 
@@ -264,7 +269,7 @@ v8.14: 2 Saniyelik (2000 milisaniye) Akıllı Zaman Kilidi (Cooldown)
             const currentSnapshot = sorted.map(pat => `${pat}:${counts[pat]}`).join("|");
             if (currentSnapshot === lastLoggedSnapshot) return; lastLoggedSnapshot = currentSnapshot;
             console.clear();
-            console.log("%c[v8.14 SABİT PANEL] - SON 5 SANİYE FREKANS RAPORU", "color: #00ffcc; font-weight: bold; font-size: 12px;");
+            console.log("%c[v8.16 SABİT PANEL] - SON 5 SANİYE FREKANS RAPORU", "color: #00ffcc; font-weight: bold; font-size: 12px;");
             console.log("--------------------------------------------------");
             sorted.forEach((pat, idx) => { const len = pat.split("-").length; console.log(`${idx + 1}. [${len} Harf] Kod: ${pat} -> %cFrekans: ${counts[pat]}`, "color: #ff9900; font-weight: bold;"); });
             console.log("--------------------------------------------------");
@@ -294,6 +299,21 @@ v8.14: 2 Saniyelik (2000 milisaniye) Akıllı Zaman Kilidi (Cooldown)
             } catch (e) { console.log("Ses hatası: ", e); }
         }
 
+        // v8.16 YENİ EKLEME: KALIN DIT HATA SES ÜRETİCİSİ (320Hz)
+        function playErrorBeep() {
+            try {
+                if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+                if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                osc.type = 'sawtooth'; // Endüstriyel daha pürüzlü ses formu
+                osc.frequency.setValueAtTime(320, audioCtx.currentTime); // Düşük kalın frekans
+                gain.gain.setValueAtTime(0.5, audioCtx.currentTime); // Ses şiddeti
+                osc.connect(gain); gain.connect(audioCtx.destination); 
+                osc.start(); 
+                osc.stop(audioCtx.currentTime + 0.35); // Bir tık daha uzun hata tonu
+            } catch (e) { console.log("Hata sesi hatası: ", e); }
+        }
+
         async function startCamera() {
             if (currentStream) { currentStream.getTracks().forEach(track => track.stop()); }
             try {
@@ -307,7 +327,7 @@ v8.14: 2 Saniyelik (2000 milisaniye) Akıllı Zaman Kilidi (Cooldown)
                 } catch (e) {
                     try {
                         const basicStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-                        handleStream(basicStream, "Kamera Hatası");
+                        handleStream(basicStream, "Test Modu");
                     } catch (ex) { statusText.innerText = "Kamera Hatası: " + ex.message; }
                 }
             }
