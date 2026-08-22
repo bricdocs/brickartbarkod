@@ -1,4 +1,4 @@
-/* style.css - v8.19 GOOGLE SHEETS ENTEGRELİ MODEL */
+/* style.css - v8.20 BYPASS MOTORLU MODEL */
 body {
     font-family: Arial, sans-serif;
     text-align: center;
@@ -154,6 +154,7 @@ video {
 #clear-history-btn { background: #cc3333; color: #fff; }
 #clear-console-btn { background: #3399ff; color: #fff; }
 #view-database-btn { background: #00ffcc; color: #111; }
+#bypass-dir-btn { background: #b33939; color: #fff; }
 #save-sheets-btn { background: #1f7a8c; color: #fff; width: 100%; max-width: 380px; margin-top: 8px; font-size: 1.0em; padding: 10px; }
 #save-sheets-btn:disabled { background: #333; color: #777; cursor: not-allowed; box-shadow: none; }
 
