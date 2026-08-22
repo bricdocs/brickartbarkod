@@ -8,16 +8,14 @@ v8.12: Briç turnuva modu, küresel mükerrerlik zırhı ve otomatik vites kurul
 v8.13: Tarihçenin silinmesi engellendi, yön başlıkları (--- KUZEY ---) eklendi.
 v8.14: 2 Saniyelik (2000 ms) Akıllı Zaman Kilidi (Cooldown) zırhı entegre edildi.
 v8.15: Mükerrer kart algılandığında History listesine kalıcı kırmızı uyarı basıldı.
-v8.16: Mükerrer kartlar için bağımsız ses motoru eklendi.
-v8.17: Kaba hata sesi akustik "Bip-bop" tonuna çevrildi. Tekil uyarı basma eklendi.
 v8.18: updateBridgeUI fonksiyonu içine kaçan "NCN" yazım hatası temizlendi.
 v8.19: Google Sheets (Etablolar) tam entegrasyonu sağlandı. Manuel kaydetme buton eklendi.
 v8.20: Acil durum "Manuel Bypass" motoru kuruldu. Arayüze "13'e Tamamla" butonu eklendi.
 v8.22: DOM yüklenme sırasından kaynaklanan "historyList is null" hatası temizlendi.
 v8.23: Google Sheets tarafına "Canlı Hakem" çakışma kontrolü entegre edildi.
-v8.24: İnternet kopmalarına karşı localStorage yedeği kuruldu. %100 doğrulamalı 
-       post motoru yazıldı. Seçenek B kapsamında, kayıt bitince canlanan, Turnuva 
-       No ve Operatörü sabit tutup Bord No'yu 1 artıran "Sonraki Borda Geç" eklendi.
+v8.24: İnternet kopmalarına karşı localStorage yedeği ve Seçenek B modülü kuruldu.
+v8.25: v8.24 Parça 3/5 sürümünde baş tarafa "function" yazılmamasından ötürü kamerayı kilitleyen
+       ve "unexpected token: identifier" hatası veren sinsi Syntax yazım hatası (Bug) temizlendi.
 ===================================================================
 -->
 <!DOCTYPE html>
@@ -25,13 +23,13 @@ v8.24: İnternet kopmalarına karşı localStorage yedeği kuruldu. %100 doğrul
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jannersten Kart Barkod Okuyucu - v8.24 GÜVENLİ MODEL</title>
+    <title>Jannersten Kart Barkod Okuyucu - v8.25 SIFIR HATALI MODEL</title>
     <link rel="stylesheet" href="style.css">
     <script src="barkod-data.js"></script>
 </head>
 <body>
 
-    <h2>Jannersten Tarayıcı (v8.24 - Kesintisiz)</h2>
+    <h2>Jannersten Tarayıcı (v8.25 - Kusursuz Akış)</h2>
     
     <!-- 📝 DATA GİRİŞ KUTULARI VE SELECT MENÜSÜ -->
     <div id="bridge-inputs">
@@ -70,7 +68,7 @@ v8.24: İnternet kopmalarına karşı localStorage yedeği kuruldu. %100 doğrul
     <!-- 📥 GÖNDERME VE SEÇENEK B BUTONLARI -->
     <div class="btn-group">
         <button id="save-sheets-btn" class="action-btn" onclick="saveDataToGoogleSheets()" disabled>📥 Bordu Google Sheets'e Kaydet</button>
-        <button id="next-bord-btn" class="action-btn" onclick="advanceToNextBord()">箱 Sonraki Borda Geç / Ekranı Temizle</button>
+        <button id="next-bord-btn" class="action-btn" onclick="advanceToNextBord()">⏭️ Sonraki Borda Geç / Ekranı Temizle</button>
     </div>
 
     <canvas id="hidden-canvas" style="display:none;"></canvas>
@@ -126,7 +124,7 @@ v8.24: İnternet kopmalarına karşı localStorage yedeği kuruldu. %100 doğrul
         let diagnosticsBuffer = []; let lastConsoleLogTime = 0; let lastLoggedSnapshot = ""; 
 
         // ===================================================================
-        // 🃏 v8.24 HAFIZA VE YÖN ŞELALESİ ÇEKİRDEĞİ
+        // 🃏 v8.25 BRİÇ SEANS HAFIZASI VE YÖN SAYAÇ MOTORU
         // ===================================================================
         let bridgeBordData = { "N": [], "E": [], "S": [], "W": [] };
         let currentDirection = "N"; let currentDirectionHeaderAdded = false; let lastReadTime = 0; let lastErrorCard = ""; 
@@ -181,9 +179,9 @@ v8.24: İnternet kopmalarına karşı localStorage yedeği kuruldu. %100 doğrul
         }
 
         // ===================================================================
-        // 📥 v8.24 DOĞRULAMALI VE OFFLINE YEDEKLİ VERİ TRANSFER MOTORU
+        // 📥 v8.25 DOĞRULAMALI VE YAZIM HATASI DÜZELTİLMİŞ POST TRANSFER MOTORU
         // ===================================================================
-        async saveDataToGoogleSheets() {
+        async function saveDataToGoogleSheets() {
             const btn = document.getElementById('save-sheets-btn');
             const tNo = document.getElementById('inp-turnuva-no').value.trim(); const bNo = document.getElementById('inp-bord-no').value; const uName = document.getElementById('inp-user').value.trim();
             const curDate = new Date().toLocaleDateString('tr-TR') + " " + new Date().toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'});
@@ -330,7 +328,7 @@ v8.24: İnternet kopmalarına karşı localStorage yedeği kuruldu. %100 doğrul
             const sorted = Object.keys(counts).sort((a, b) => counts[b] - counts[a]).slice(0, 4);
             const currentSnapshot = sorted.map(pat => `${pat}:${counts[pat]}`).join("|");
             if (currentSnapshot === lastLoggedSnapshot) return; lastLoggedSnapshot = currentSnapshot;
-            console.clear(); console.log("%c[v8.24 SABİT PANEL] - SON 5 SANİYE FREKANS RAPORU", "color: #00ffcc; font-weight: bold; font-size: 12px;"); console.log("--------------------------------------------------");
+            console.clear(); console.log("%c[v8.25 SABİT PANEL] - SON 5 SANİYE FREKANS RAPORU", "color: #00ffcc; font-weight: bold; font-size: 12px;"); console.log("--------------------------------------------------");
             sorted.forEach((pat, idx) => { const len = pat.split("-").length; console.log(`${idx + 1}. [${len} Harf] Kod: ${pat} -> %cFrekans: ${counts[pat]}`, "color: #ff9900; font-weight: bold;"); }); console.log("--------------------------------------------------");
         }
 
