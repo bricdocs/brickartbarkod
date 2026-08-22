@@ -1,0 +1,232 @@
+/* style.css - v8.24 KURŞUN GEÇİRMEZ BRİÇ MODELİ */
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background: #111;
+    color: #fff;
+    margin: 0;
+    padding: 10px;
+}
+#bridge-inputs {
+    max-width: 380px;
+    margin: 0 auto 8px auto;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 8px;
+    display: flex;
+    gap: 6px;
+    justify-content: space-between;
+}
+#bridge-inputs input, #bridge-inputs select {
+    background: #000;
+    border: 1px solid #555;
+    color: #00ffcc;
+    padding: 6px;
+    border-radius: 4px;
+    font-size: 0.82em;
+    width: 32%;
+    box-sizing: border-box;
+    text-align: center;
+}
+#bridge-inputs input::placeholder { color: #666; }
+
+#bridge-dashboard {
+    max-width: 380px;
+    margin: 0 auto 10px auto;
+    background: #222;
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 8px;
+    display: flex;
+    justify-content: space-around;
+}
+.direction-box {
+    padding: 5px 4px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    background: #111;
+    border: 1px solid #333;
+    color: #aaa;
+    min-width: 78px;
+}
+.direction-box.active-dir {
+    background: #ff9900;
+    color: #111;
+    font-weight: bold;
+    border-color: #fff;
+    box-shadow: 0 0 8px rgba(255, 153, 0, 0.6);
+}
+.direction-box.done-dir {
+    background: #1a3a2a;
+    color: #00ffcc;
+    border-color: #00ffcc;
+}
+
+#scanner-container {
+    position: relative;
+    width: 100%;
+    max-width: 380px;
+    margin: auto;
+    border: 2px solid #444;
+    background: #000;
+    overflow: hidden;
+}
+video {
+    width: 100%;
+    display: block;
+}
+#laser-guide {
+    position: absolute;
+    top: 0;
+    left: 10%;
+    width: 80%;
+    height: 260px;
+    border-top: 2px solid #00ffcc;
+    border-bottom: 2px dashed #00ffcc;
+    background: rgba(0, 255, 204, 0.08);
+    box-shadow: 0 0 15px rgba(0, 255, 204, 0.35);
+    pointer-events: none;
+}
+#preview-container {
+    margin-top: 10px;
+    text-align: center;
+}
+#debug-canvas {
+    border: 2px solid #ff9900;
+    background: #000;
+    width: 80%;
+    max-width: 304px;
+    height: 30px;
+    display: inline-block;
+}
+#result-panel {
+    margin-top: 10px;
+    padding: 12px;
+    background: #222;
+    border-radius: 6px;
+    text-align: left;
+    max-width: 356px;
+    margin-left: auto;
+    margin-right: auto;
+    border: 1px solid #333;
+}
+.info-row {
+    margin-bottom: 8px;
+    font-size: 0.95em;
+}
+.binary-output {
+    font-family: monospace;
+    word-break: break-all;
+    color: #ff9900;
+    background: #000;
+    padding: 5px;
+    display: block;
+    margin-top: 2px;
+    font-size: 0.85em;
+    max-height: 50px;
+    overflow-y: auto;
+}
+.binary-output.raw-hidden {
+    display: none !important;
+}
+.btn-group {
+    margin-top: 10px;
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    max-width: 380px;
+    margin-left: auto;
+    margin-right: auto;
+    flex-wrap: wrap;
+}
+.action-btn {
+    padding: 8px 10px;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 0.85em;
+}
+#switch-camera-btn { background: #ff9900; color: #111; }
+#clear-history-btn { background: #cc3333; color: #fff; }
+#clear-console-btn { background: #3399ff; color: #fff; }
+#view-database-btn { background: #00ffcc; color: #111; }
+#bypass-dir-btn { background: #b33939; color: #fff; }
+#save-sheets-btn { background: #1f7a8c; color: #fff; width: 100%; max-width: 380px; margin-top: 8px; font-size: 1.0em; padding: 10px; }
+#save-sheets-btn:disabled { background: #333; color: #777; cursor: not-allowed; box-shadow: none; }
+#next-bord-btn { background: #ff9900; color: #111; width: 100%; max-width: 380px; margin-top: 6px; font-size: 1.0em; padding: 10px; display: none; }
+
+#history-panel {
+    margin-top: 12px;
+    padding: 10px;
+    background: #1a1a1a;
+    border-radius: 6px;
+    border: 1px solid #333;
+    max-width: 356px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: left;
+    max-height: 110px;
+    overflow-y: auto;
+}
+.checkbox-container {
+    text-align: left;
+    margin-bottom: 6px;
+    font-size: 0.9em;
+    color: #ff9900;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+#history-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 5px 0 0 0;
+    font-size: 1.1em;
+    font-family: monospace;
+    text-align: left;
+}
+#history-list li {
+    display: inline-block;
+    margin-right: 5px;
+    padding: 2px 0;
+}
+#history-list li span.num { color: #ff9900; font-weight: bold; }
+#history-list li span.card { color: #00ffcc; font-weight: bold; }
+#history-list li span.pattern { color: #888; font-size: 0.85em; }
+#history-list li span.pattern.pattern-hidden { display: none; }
+#history-list li span.comma { color: #fff; }
+#history-list li:last-child span.comma { display: none; }
+
+#database-view-panel {
+    display: none;
+    position: fixed;
+    top: 5%;
+    left: 5%;
+    width: 90%;
+    height: 85%;
+    background: rgba(15, 15, 15, 0.98);
+    border: 2px solid #00ffcc;
+    border-radius: 8px;
+    z-index: 9999;
+    padding: 12px;
+    box-shadow: 0 0 25px rgba(0, 255, 204, 0.4);
+    box-sizing: border-box;
+}
+#db-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #333;
+    padding-bottom: 8px;
+}
+#database-view-list {
+    text-align: left;
+    font-family: monospace;
+    font-size: 0.9em;
+    height: calc(100% - 40px);
+    overflow-y: auto;
+    padding-right: 5px;
+}
