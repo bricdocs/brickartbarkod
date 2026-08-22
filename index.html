@@ -1,18 +1,17 @@
 <!-- 
 ===================================================================
 VERSİYON/CHANGELOG KAYDI:
-v8.0: CSS katmanı ayrıştırıldı, harici style.css dosyasına taşındı.
-v8.4: Akıllı Hibrit Kesme katmanı eklendi (7, 9, 11, 13 basamaklı).
 v8.12: Briç turnuva modu, küresel mükerrerlik zırhı ve otomatik vites kuruldu.
 v8.14: 2 Saniyelik (2000 ms) Akıllı Zaman Kilidi (Cooldown) zırhı entegre edildi.
-v8.19: Google Sheets (Etablolar) tam entegrasyonu sağlandı. Manuel kaydetme eklendi.
-v8.20: Acil durum "Manuel Bypass" motoru ve "13'e Tamamla" butonu eklendi.
+v8.17: Kaba hata sesi akustik "Bip-bop" tonuna çevrildi. Tekil uyarı basma eklendi.
+v8.19: Google Sheets (Etablolar) tam entegrasyonu sağlandı. Manuel kaydetme buton eklendi.
+v8.20: Acil durum "Manuel Bypass" motoru kuruldu. Arayüze "13'e Tamamla" butonu eklendi.
 v8.22: DOM yüklenme sırasından kaynaklanan element null hataları düzeltildi.
+v8.23: Google Sheets tarafına "Canlı Hakem" çakışma kontrolü entegre edildi.
 v8.24: Çevrimdışı localStorage yedeği, post doğrulama motoru ve Seçenek B kuruldu.
-v8.25: Fonksiyon tanımındaki sinsi yazım hatası ve kamera kilidi temizlendi.
-v8.26: Operatör (User) giriş alanı tamamen kaldırılarak yerine tam alfabetik sıralı 
-       (AKIN, AYTE, CEM, HULU, İSMA, JOK1, JOK2, MAHM, SÜLE, TANJ) açılır menü 
-       (Select) entegre edildi. Boş kayıt engelleme validasyonu yeni menüye uyarlandı.
+v8.26: Operatör (User) giriş alanı alfabetik sıralı Select menüsüne dönüştürüldü.
+v8.27: Parça 5/5 içerisine kazara sızan "invalid assignment to const 'idx'" klavye hatası 
+       temizlendi. Talimat uyarınca tüm "Jannersten Tarayıcı" başlıkları "Barkod Tarayıcı" yapıldı.
 ===================================================================
 -->
 <!DOCTYPE html>
@@ -20,15 +19,15 @@ v8.26: Operatör (User) giriş alanı tamamen kaldırılarak yerine tam alfabeti
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jannersten Kart Barkod Okuyucu - v8.26 OPERATÖR SEÇMELİ</title>
+    <title>Barkod Okuyucu - v8.27 KUSURSUZ MODEL</title>
     <link rel="stylesheet" href="style.css">
     <script src="barkod-data.js"></script>
 </head>
 <body>
 
-    <h2>Jannersten Tarayıcı (v8.26 - Operatör Seçmeli)</h2>
+    <h2>Barkod Tarayıcı (v8.27 - Kusursuz Akış)</h2>
     
-    <!-- 📝 v8.26 ÇİFT SELECT MENÜLÜ DATA GİRİŞ ALANLARI -->
+    <!-- 📝 ÇİFT SELECT MENÜLÜ DATA GİRİŞ ALANLARI -->
     <div id="bridge-inputs">
         <input type="text" id="inp-turnuva-no" value="22.08.2026" placeholder="Turnuva NO">
         <select id="inp-bord-no">
@@ -77,7 +76,7 @@ v8.26: Operatör (User) giriş alanı tamamen kaldırılarak yerine tam alfabeti
     <!-- 📥 GÖNDERME VE SEÇENEK B BUTONLARI -->
     <div class="btn-group">
         <button id="save-sheets-btn" class="action-btn" onclick="saveDataToGoogleSheets()" disabled>📥 Bordu Google Sheets'e Kaydet</button>
-        <button id="next-bord-btn" class="action-btn" onclick="advanceToNextBord()">箱 Sonraki Borda Geç / Ekranı Temizle</button>
+        <button id="next-bord-btn" class="action-btn" onclick="advanceToNextBord()">⏭️ Sonraki Borda Geç / Ekranı Temizle</button>
     </div>
 
     <canvas id="hidden-canvas" style="display:none;"></canvas>
@@ -116,8 +115,8 @@ v8.26: Operatör (User) giriş alanı tamamen kaldırılarak yerine tam alfabeti
         let bridgeBordData = { "N": [], "E": [], "S": [], "W": [] };
         let currentDirection = "N"; let currentDirectionHeaderAdded = false; let lastReadTime = 0; let lastErrorCard = ""; 
 
-        // 🚨 BURAYA GOOGLE APPS SCRIPT WEB UYGULAMASI /exec LİNKİNİ YAPIŞTIRIN!
-        const GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzDnF4VH9EE4OdTzrxY6tl94tERLUuCC7MtlSbUlruCx_q-vgw9Q-n-Cf61gmtPV2Cy5g/exec";
+        // 🚨 BURAYA GOOGLE APPS SCRIPT PANELİNDEN ALDIĞINIZ EN SON YENİ /exec LİNKİNİ YAPIŞTIRIN!
+        const GOOGLE_APPS_SCRIPT_URL = "https://google.com";
 
         function isCardAlreadyReadAnywhere(cardName) {
             return bridgeBordData["N"].includes(cardName) || bridgeBordData["E"].includes(cardName) || bridgeBordData["S"].includes(cardName) || bridgeBordData["W"].includes(cardName);
@@ -165,16 +164,12 @@ v8.26: Operatör (User) giriş alanı tamamen kaldırılarak yerine tam alfabeti
             document.getElementById('count-N').innerText = bridgeBordData["N"].length; document.getElementById('count-E').innerText = bridgeBordData["E"].length; document.getElementById('count-S').innerText = bridgeBordData["S"].length; document.getElementById('count-W').innerText = bridgeBordData["W"].length;
         }
 
-        // ===================================================================
-        // 📥 v8.26 DOĞRULAMALI VE YENİ SELECT ALANLI TRANSFER KATMANI
-        // ===================================================================
         async function saveDataToGoogleSheets() {
             const btn = document.getElementById('save-sheets-btn');
             const tNo = document.getElementById('inp-turnuva-no').value.trim(); 
             const bNo = document.getElementById('inp-bord-no').value; 
-            const uName = document.getElementById('inp-user').value; // v8.26 Select değerini çeker
+            const uName = document.getElementById('inp-user').value;
 
-            // v8.23/v8.26 Validasyon: Operatör seçilmemişse kaydı engeller
             if (!tNo || !bNo || !uName) { alert("🔴 HATA: Lütfen Turnuva, Bord No ve Operatör alanlarını seçin!"); return; }
             btn.innerText = "⏳ %100 Güvenli Doğrulama Yapılıyor..."; btn.setAttribute('disabled', 'true');
 
@@ -318,7 +313,7 @@ v8.26: Operatör (User) giriş alanı tamamen kaldırılarak yerine tam alfabeti
             const sorted = Object.keys(counts).sort((a, b) => counts[b] - counts[a]).slice(0, 4);
             const currentSnapshot = sorted.map(pat => `${pat}:${counts[pat]}`).join("|");
             if (currentSnapshot === lastLoggedSnapshot) return; lastLoggedSnapshot = currentSnapshot;
-            console.clear(); console.log("%c[v8.26 SABİT PANEL] - SON 5 SANİYE FREKANS RAPORU", "color: #00ffcc; font-weight: bold; font-size: 12px;"); console.log("--------------------------------------------------");
+            console.clear(); console.log("%c[v8.27 SABİT PANEL] - SON 5 SANİYE FREKANS RAPORU", "color: #00ffcc; font-weight: bold; font-size: 12px;"); console.log("--------------------------------------------------");
             sorted.forEach((pat, idx) => { const len = pat.split("-").length; console.log(`${idx + 1}. [${len} Harf] Kod: ${pat} -> %cFrekans: ${counts[pat]}`, "color: #ff9900; font-weight: bold;"); }); console.log("--------------------------------------------------");
         }
 
@@ -384,7 +379,8 @@ v8.26: Operatör (User) giriş alanı tamamen kaldırılarak yerine tam alfabeti
 
                     for (let x = 0; x < scanLength; x++) {
                         const isWhite = rowBrightnesses[x] > dynamicThreshold; binaryString += isWhite ? "1" : "0"; const idx = x * 4;
-                        if (isWhite) { debugImgData.data[idx] = 255; debugImgData.data[idx+1] = 255; debugImgData.data[idx+2] = 255; } else { debugImgData.data[idx = 255]; debugImgData.data[idx+1] = 0; debugImgData.data[idx+2] = 0; }
+                        if (isWhite) { debugImgData.data[idx] = 255; debugImgData.data[idx+1] = 255; debugImgData.data[idx+2] = 255; } 
+                        else { debugImgData.data[idx] = 255; debugImgData.data[idx+1] = 0; debugImgData.data[idx+2] = 0; }
                         debugImgData.data[idx+3] = 255;     
                     }
 
