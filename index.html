@@ -6,13 +6,11 @@ v8.14: 2 Saniyelik (2000 ms) Akıllı Zaman Kilidi (Cooldown) zırhı entegre ed
 v8.17: Kaba hata sesi akustik "Bip-bop" tonuna çevrildi. Tekil uyarı basma eklendi.
 v8.19: Google Sheets (Etablolar) tam entegrasyonu sağlandı. Manuel kaydetme buton eklendi.
 v8.20: Acil durum "Manuel Bypass" motoru kuruldu. Arayüze "13'e Tamamla" butonu eklendi.
-v8.22: DOM yüklenme sırasından kaynaklanan element null hataları düzeltildi.
-v8.23: Google Sheets tarafına "Canlı Hakem" çakışma kontrolü entegre edildi.
 v8.24: Çevrimdışı localStorage yedeği, post doğrulama motoru ve Seçenek B kuruldu.
 v8.26: Operatör (User) giriş alanı alfabetik sıralı Select menüsüne dönüştürüldü.
-v8.27: "idx" klavye hatası temizlendi. Başlıklar "Barkod Tarayıcı" yapıldı.
-v8.30: Operatörün yakaladığı sinsi "google.com" link hatası temizlendi. Canlı doğrulama
-       ve mühürleme katmanı (CORS modu) en kararlı haliyle sisteme geri yüklendi.
+v8.27: Parça 5/5 içerisindeki "idx" klavye hatası temizlendi. Başlıklar güncellendi.
+v8.28: Kart okunduğunda motoru felç eden "historyList is null" element yerleşim hatası (DOM Bug),
+       tüm element tanımları DOMContentLoaded yapısının içine taşınarak KESİN VE NİHAİ OLARAK ÇÖZÜLDÜ.
 ===================================================================
 -->
 <!DOCTYPE html>
@@ -20,13 +18,13 @@ v8.30: Operatörün yakaladığı sinsi "google.com" link hatası temizlendi. Ca
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barkod Okuyucu - v8.30 CANLI MÜHÜRLÜ MODEL</title>
+    <title>Barkod Okuyucu - v8.28 TAM KARARLI MODEL</title>
     <link rel="stylesheet" href="style.css">
     <script src="barkod-data.js"></script>
 </head>
 <body>
 
-    <h2>Barkod Tarayıcı (v8.30 - %100 Doğrulamalı)</h2>
+    <h2>Barkod Tarayıcı (v8.28 - Kurşun Geçirmez)</h2>
     
     <!-- 📝 DATA GİRİŞ KUTULARI VE SELECT MENÜSÜ -->
     <div id="bridge-inputs">
@@ -96,7 +94,27 @@ v8.30: Operatörün yakaladığı sinsi "google.com" link hatası temizlendi. Ca
         </div>
     </div>
 
+    <div id="history-panel">
+        <label class="checkbox-container">
+            <input type="checkbox" id="show-patterns-check" onchange="togglePatterns()">
+            Örüntü Kodlarını Göster ()
+        </label>
+        <strong>Deste Genelinde Okunan Kartlar Raporu:</strong>
+        <ul id="history-list">
+            <li style="color: #666; text-align: center;">Henüz seans başlatılmadı</li>
+        </ul>
+    </div>
+
+    <div id="database-view-panel">
+        <div id="db-panel-header">
+            <strong style="color: #00ffcc; font-size: 1.0em;">Canlı Sözlük Hafızası</strong>
+            <button class="action-btn" style="background:#cc3333; color:white; padding:4px 10px;" onclick="toggleDatabaseView()">Kapat X</button>
+        </div>
+        <div id="database-view-list"></div>
+    </div>
+
     <script>
+        // v8.28 DOĞRULAMA: Elementler yukarıda boş bırakılır, DOMContentLoaded içinde kilitlenir!
         let video, canvas, ctx, debugCanvas, dctx;
         let statusText, cardNameText, patternCodeText, rawDataText, historyList, activeDirLbl;
 
@@ -107,7 +125,7 @@ v8.30: Operatörün yakaladığı sinsi "google.com" link hatası temizlendi. Ca
         let bridgeBordData = { "N": [], "E": [], "S": [], "W": [] };
         let currentDirection = "N"; let currentDirectionHeaderAdded = false; let lastReadTime = 0; let lastErrorCard = ""; 
 
-        // 🚨 BURAYA GOOGLE APPS SCRIPT PANELİNDEN ALDIĞINIZ EN SON YENİ /exec LİNKİNİZİ EKSİKSİZ YAPISTIRIN!
+        // 🚨 BURAYA GOOGLE APPS SCRIPT WEB UYGULAMASI /exec LİNKİNİ YAPIŞTIRIN!
         const GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzDnF4VH9EE4OdTzrxY6tl94tERLUuCC7MtlSbUlruCx_q-vgw9Q-n-Cf61gmtPV2Cy5g/exec";
 
         function isCardAlreadyReadAnywhere(cardName) {
@@ -156,15 +174,12 @@ v8.30: Operatörün yakaladığı sinsi "google.com" link hatası temizlendi. Ca
             document.getElementById('count-N').innerText = bridgeBordData["N"].length; document.getElementById('count-E').innerText = bridgeBordData["E"].length; document.getElementById('count-S').innerText = bridgeBordData["S"].length; document.getElementById('count-W').innerText = bridgeBordData["W"].length;
         }
 
-        // ===================================================================
-        // 🔒 v8.30 %100 CANLI DOĞRULAMALI VE SENKRON TRANSFER MOTORU
-        // ===================================================================
         async function saveDataToGoogleSheets() {
             const btn = document.getElementById('save-sheets-btn');
             const tNo = document.getElementById('inp-turnuva-no').value.trim(); const bNo = document.getElementById('inp-bord-no').value; const uName = document.getElementById('inp-user').value;
 
-            if (!tNo || !bNo || !uName) { alert("🔴 HATA: Lütfen tüm alanları eksiksiz seçin!"); return; }
-            btn.innerText = "⏳ %100 Canlı Doğrulama Yapılıyor..."; btn.setAttribute('disabled', 'true');
+            if (!tNo || !bNo || !uName) { alert("🔴 HATA: Lütfen Turnuva, Bord No ve Operatör alanlarını seçin!"); return; }
+            btn.innerText = "⏳ %100 Güvenli Doğrulama Yapılıyor..."; btn.setAttribute('disabled', 'true');
 
             const curDate = new Date().toLocaleDateString('tr-TR') + " " + new Date().toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'});
             const payload = {
@@ -175,13 +190,7 @@ v8.30: Operatörün yakaladığı sinsi "google.com" link hatası temizlendi. Ca
             localStorage.setItem(offlineKey, JSON.stringify(payload));
 
             try {
-                // v8.30: Hakem mühürünü tam doğrulamak için 'text/plain' kapsülüyle CORS modunda konuşur
-                const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "text/plain" },
-                    body: JSON.stringify(payload)
-                });
-                
+                const response = await fetch(GOOGLE_APPS_SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload) });
                 const resJson = await response.json();
 
                 if (resJson.status === "EXISTS") {
@@ -198,7 +207,7 @@ v8.30: Operatörün yakaladığı sinsi "google.com" link hatası temizlendi. Ca
             } catch (err) {
                 btn.innerText = "💾 İNTERNET YOK - TELEFONA YEDEKLENDİ"; btn.style.background = "#ff9900"; btn.style.color = "#111";
                 document.getElementById('next-bord-btn').style.display = "block";
-                alert("⚠️ ÇEVRİMDIŞI MOD: Verileriniz telefon hafızasına güvenle yedeklendi. Bir sonraki borda geçebilirsiniz.");
+                alert("⚠️ ÇEVRİMDIŞI MOD: İnternet yok, verileriniz telefon hafızasına güvenle yedeklendi.");
             }
         }
 
@@ -312,7 +321,7 @@ v8.30: Operatörün yakaladığı sinsi "google.com" link hatası temizlendi. Ca
             const sorted = Object.keys(counts).sort((a, b) => counts[b] - counts[a]).slice(0, 4);
             const currentSnapshot = sorted.map(pat => `${pat}:${counts[pat]}`).join("|");
             if (currentSnapshot === lastLoggedSnapshot) return; lastLoggedSnapshot = currentSnapshot;
-            console.clear(); console.log("%c[v8.30 SABİT PANEL] - SON 5 SANİYE FREKANS RAPORU", "color: #00ffcc; font-weight: bold; font-size: 12px;"); console.log("--------------------------------------------------");
+            console.clear(); console.log("%c[v8.28 SABİT PANEL] - SON 5 SANİYE FREKANS RAPORU", "color: #00ffcc; font-weight: bold; font-size: 12px;"); console.log("--------------------------------------------------");
             sorted.forEach((pat, idx) => { const len = pat.split("-").length; console.log(`${idx + 1}. [${len} Harf] Kod: ${pat} -> %cFrekans: ${counts[pat]}`, "color: #ff9900; font-weight: bold;"); }); console.log("--------------------------------------------------");
         }
 
@@ -355,12 +364,12 @@ v8.30: Operatörün yakaladığı sinsi "google.com" link hatası temizlendi. Ca
                     try {
                         const basicStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
                         handleStream(basicStream, "Kamera Başı");
-                    } catch (ex) { statusText.innerText = "Kamera Hatası: " + ex.message; }
+                    } catch (ex) { if(statusText) statusText.innerText = "Kamera Hatası: " + ex.message; }
                 }
             }
         }
 
-        function handleStream(stream, statusMsg) { currentStream = stream; video.srcObject = stream; statusText.innerText = statusMsg; requestAnimationFrame(processFrame); }
+        function handleStream(stream, statusMsg) { currentStream = stream; video.srcObject = stream; if(statusText) statusText.innerText = statusMsg; requestAnimationFrame(processFrame); }
         function switchCamera() { currentFacingMode = (currentFacingMode === "environment") ? "user" : "environment"; startCamera(); }
 
         function processFrame() {
@@ -411,9 +420,12 @@ v8.30: Operatörün yakaladığı sinsi "google.com" link hatası temizlendi. Ca
             requestAnimationFrame(processFrame);
         }
 
-        function resetScannerPanel() { matchCount = Math.max(0, matchCount - 1); if (matchCount === 0) { cardNameText.innerText = "KART BEKLENİYOR..."; cardNameText.style.color = "#888"; patternCodeText.innerText = "-"; lastLoggedCard = ""; } }
+        function resetScannerPanel() { matchCount = Math.max(0, matchCount - 1); if (matchCount === 0) { if(cardNameText) cardNameText.innerText = "KART BEKLENİYOR..."; if(cardNameText) cardNameText.style.color = "#888"; if(patternCodeText) patternCodeText.innerText = "-"; lastLoggedCard = ""; } }
         function parseBarPattern(binaryStr) { if (!binaryStr) return ""; let result = []; let currentBit = binaryStr; let count = 1; for (let i = 1; i < binaryStr.length; i++) { if (binaryStr[i] === currentBit) { count++; } else { const type = (currentBit === "0") ? "B" : "W"; if (count > 2) result.push(`${type}${count}`); currentBit = binaryStr[i]; count = 1; } } return result.slice(1, -1).join("-"); }
 
+        // ===================================================================
+        // 🛡️ v8.28 ULUSAL ALTYAPI GARANTİSİ: DOM elementleri tam çizilince kilitle!
+        // ===================================================================
         window.addEventListener('DOMContentLoaded', () => {
             video = document.getElementById('webcam'); canvas = document.getElementById('hidden-canvas'); ctx = canvas.getContext('2d');
             debugCanvas = document.getElementById('debug-canvas'); dctx = debugCanvas.getContext('2d');
@@ -422,6 +434,7 @@ v8.30: Operatörün yakaladığı sinsi "google.com" link hatası temizlendi. Ca
             
             const bordSelect = document.getElementById('inp-bord-no');
             for (let i = 1; i <= 40; i++) { const opt = document.createElement('option'); opt.value = i; opt.innerText = "Bord " + i; bordSelect.appendChild(opt); }
+            
             startCamera(); checkOfflineQueue();
         });
     </script>
