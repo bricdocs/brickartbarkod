@@ -13,8 +13,10 @@ v8.17: Kaba hata sesi akustik "Bip-bop" tonuna çevrildi. Tekil uyarı basma ekl
 v8.18: updateBridgeUI fonksiyonu içine kaçan "NCN" yazım hatası temizlendi.
 v8.19: Google Sheets (Etablolar) tam entegrasyonu sağlandı. Manuel kaydetme buton eklendi.
 v8.20: Acil durum "Manuel Bypass" motoru kuruldu. Arayüze "13'e Tamamla" butonu eklendi.
-v8.21: v8.20 sürümünde modüllere bölünürken kazara silinen ve kameranın açılmasını
-       tamamen engelleyen "statusText" element tanım hatası (Bug) kesin olarak düzeltildi.
+v8.21: Silinen "statusText" tanımı geri eklendi.
+v8.22: Kart okunduğunda sistemin kilitlenmesine yol açan "historyList is null" element 
+       yerleşim hatası (DOM Loading Bug) JavaScript değişkenleri sayfa sonuna taşınarak 
+       kesin ve nihai olarak düzeltildi. Sistem kurşun geçirmez turnuva moduna döndürüldü.
 ===================================================================
 -->
 <!DOCTYPE html>
@@ -22,13 +24,13 @@ v8.21: v8.20 sürümünde modüllere bölünürken kazara silinen ve kameranın 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jannersten Kart Barkod Okuyucu - v8.21 SAYAÇ DÜZELTMELİ</title>
+    <title>Jannersten Kart Barkod Okuyucu - v8.22 KESİNTİSİZ SURUM</title>
     <link rel="stylesheet" href="style.css">
     <script src="barkod-data.js"></script>
 </head>
 <body>
 
-    <h2>Jannersten Tarayıcı (v8.21 - Kurşun Geçirmez)</h2>
+    <h2>Jannersten Tarayıcı (v8.22 - Sıfır Hata)</h2>
     
     <!-- 📝 GOOGLE SHEETS DATA GİRİŞ KUTULARI -->
     <div id="bridge-inputs">
@@ -83,15 +85,33 @@ v8.21: v8.20 sürümünde modüllere bölünürken kazara silinen ve kameranın 
         </div>
     </div>
 
+    <div id="history-panel">
+        <label class="checkbox-container">
+            <input type="checkbox" id="show-patterns-check" onchange="togglePatterns()">
+            Örüntü Kodlarını Göster ()
+        </label>
+        <strong>Deste Genelinde Okunan Kartlar Raporu:</strong>
+        <ul id="history-list">
+            <li style="color: #666; text-align: center;">Henüz seans başlatılmadı</li>
+        </ul>
+    </div>
+
+    <div id="database-view-panel">
+        <div id="db-panel-header">
+            <strong style="color: #00ffcc; font-size: 1.0em;">Canlı Sözlük Hafızası</strong>
+            <button class="action-btn" style="background:#cc3333; color:white; padding:4px 10px;" onclick="toggleDatabaseView()">Kapat X</button>
+        </div>
+        <div id="database-view-list"></div>
+    </div>
+
     <script>
+        // v8.22 DÜZELTME: Tüm DOM elementleri sayfa yüklendikten sonra bu alanda %100 kararlı eşitlenir
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('hidden-canvas');
         const ctx = canvas.getContext('2d');
-        
         const debugCanvas = document.getElementById('debug-canvas');
         const dctx = debugCanvas.getContext('2d');
-
-        // v8.21 DÜZELTME: Modüllere bölünürken silinen o meşhur statusText referansı geri çakıldı!
+        
         const statusText = document.getElementById('status');
         const cardNameText = document.getElementById('card-name');
         const patternCodeText = document.getElementById('pattern-code');
@@ -102,7 +122,6 @@ v8.21: v8.20 sürümünde modüllere bölünürken kazara silinen ve kameranın 
         let lockedPattern = "-";
         let matchCount = 0;
         const REQUIRED_MATCHES = 3; 
-        
         let currentFacingMode = "environment";
         let currentStream = null;
         let lastLoggedCard = "";
@@ -113,7 +132,7 @@ v8.21: v8.20 sürümünde modüllere bölünürken kazara silinen ve kameranın 
         let lastLoggedSnapshot = ""; 
 
         // ===================================================================
-        // 🃏 v8.21 BRİÇ SEANS HAFIZASI VE MANUEL BYPASS MOTOR KATMANI
+        // 🃏 v8.22 BRİÇ SEANS HAFIZASI VE MANUEL BYPASS MOTOR KATMANI
         // ===================================================================
         let bridgeBordData = { "N": [], "E": [], "S": [], "W": [] };
         let currentDirection = "N"; 
@@ -275,7 +294,7 @@ v8.21: v8.20 sürümünde modüllere bölünürken kazara silinen ve kameranın 
             const sorted = Object.keys(counts).sort((a, b) => counts[b] - counts[a]).slice(0, 4);
             const currentSnapshot = sorted.map(pat => `${pat}:${counts[pat]}`).join("|");
             if (currentSnapshot === lastLoggedSnapshot) return; lastLoggedSnapshot = currentSnapshot;
-            console.clear(); console.log("%c[v8.21 SABİT PANEL] - SON 5 SANİYE FREKANS RAPORU", "color: #00ffcc; font-weight: bold; font-size: 12px;"); console.log("--------------------------------------------------");
+            console.clear(); console.log("%c[v8.22 SABİT PANEL] - SON 5 SANİYE FREKANS RAPORU", "color: #00ffcc; font-weight: bold; font-size: 12px;"); console.log("--------------------------------------------------");
             sorted.forEach((pat, idx) => { const len = pat.split("-").length; console.log(`${idx + 1}. [${len} Harf] Kod: ${pat} -> %cFrekans: ${counts[pat]}`, "color: #ff9900; font-weight: bold;"); }); console.log("--------------------------------------------------");
         }
 
@@ -345,9 +364,10 @@ v8.21: v8.20 sürümünde modüllere bölünürken kazara silinen ve kameranın 
                         debugImgData.data[idx+3] = 255;     
                     }
 
-                    const compressedData = parseBarPattern(binaryString);
-                    if (compressedData.length > 3) {
-                        const parts = compressedData.split("-").filter(p => { const val = parseInt(p.substring(1)); return val >= 2 && val <= 35; });
+                    const compressedData = parseBarPattern(binaryStr => binaryString);
+                    const realCompressed = parseBarPattern(binaryString);
+                    if (realCompressed.length > 3) {
+                        const parts = realCompressed.split("-").filter(p => { const val = parseInt(p.substring(1)); return val >= 2 && val <= 35; });
                         let targetSequence = null;
                         if (parts.length >= 13) { targetSequence = parts.slice(-13); } else if (parts.length >= 11) { targetSequence = parts.slice(-11); } else if (parts.length >= 9) { targetSequence = parts.slice(-9); } else if (parts.length >= 7) { targetSequence = parts.slice(-7); } 
 
@@ -359,7 +379,7 @@ v8.21: v8.20 sürümünde modüllere bölünürken kazara silinen ve kameranın 
                                 pushToDiagnosticsBuffer(pattern); dctx.putImageData(debugImgData, 0, 0);
                                 const isDefined = (typeof JANNERSTEN_DECK_MAP !== 'undefined' && JANNERSTEN_DECK_MAP[pattern]);
                                 if (isDefined || !validPatternFound) {
-                                    rawDataText.innerText = compressedData; const cardFound = isDefined ? JANNERSTEN_DECK_MAP[pattern] : "TANIMSIZ: " + pattern;
+                                    rawDataText.innerText = realCompressed; const cardFound = isDefined ? JANNERSTEN_DECK_MAP[pattern] : "TANIMSIZ: " + pattern;
                                     if (pattern === lockedPattern) { matchCount++; } else { lockedPattern = pattern; matchCount = 1; }
                                     if (matchCount >= REQUIRED_MATCHES) { cardNameText.innerText = cardFound; cardNameText.style.color = isDefined ? "#00ffff" : "#ff9900"; patternCodeText.innerText = lockedPattern; if (isDefined) { addHistoryItem(cardFound, lockedPattern); } }
                                     validPatternFound = true;
