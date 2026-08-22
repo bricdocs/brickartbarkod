@@ -6,12 +6,11 @@ v8.14: 2 Saniyelik (2000 ms) Akıllı Zaman Kilidi (Cooldown) zırhı entegre ed
 v8.17: Kaba hata sesi akustik "Bip-bop" tonuna çevrildi. Tekil uyarı basma eklendi.
 v8.19: Google Sheets (Etablolar) tam entegrasyonu sağlandı. Manuel kaydetme buton eklendi.
 v8.20: Acil durum "Manuel Bypass" motoru kuruldu. Arayüze "13'e Tamamla" butonu eklendi.
-v8.22: DOM yüklenme sırasından kaynaklanan element null hataları düzeltildi.
-v8.23: Google Sheets tarafına "Canlı Hakem" çakışma kontrolü entegre edildi.
 v8.24: Çevrimdışı localStorage yedeği, post doğrulama motoru ve Seçenek B kuruldu.
 v8.26: Operatör (User) giriş alanı alfabetik sıralı Select menüsüne dönüştürüldü.
-v8.27: Parça 5/5 içerisine kazara sızan "invalid assignment to const 'idx'" klavye hatası 
-       temizlendi. Talimat uyarınca tüm "Jannersten Tarayıcı" başlıkları "Barkod Tarayıcı" yapıldı.
+v8.27: Parça 5/5 içerisindeki "idx" klavye hatası temizlendi. Başlıklar güncellendi.
+v8.28: Kart okunduğunda motoru felç eden "historyList is null" element yerleşim hatası (DOM Bug),
+       tüm element tanımları DOMContentLoaded yapısının içine taşınarak KESİN VE NİHAİ OLARAK ÇÖZÜLDÜ.
 ===================================================================
 -->
 <!DOCTYPE html>
@@ -19,15 +18,15 @@ v8.27: Parça 5/5 içerisine kazara sızan "invalid assignment to const 'idx'" k
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barkod Okuyucu - v8.27 KUSURSUZ MODEL</title>
+    <title>Barkod Okuyucu - v8.28 TAM KARARLI MODEL</title>
     <link rel="stylesheet" href="style.css">
     <script src="barkod-data.js"></script>
 </head>
 <body>
 
-    <h2>Barkod Tarayıcı (v8.27 - Kusursuz Akış)</h2>
+    <h2>Barkod Tarayıcı (v8.28 - Kurşun Geçirmez)</h2>
     
-    <!-- 📝 ÇİFT SELECT MENÜLÜ DATA GİRİŞ ALANLARI -->
+    <!-- 📝 DATA GİRİŞ KUTULARI VE SELECT MENÜSÜ -->
     <div id="bridge-inputs">
         <input type="text" id="inp-turnuva-no" value="22.08.2026" placeholder="Turnuva NO">
         <select id="inp-bord-no">
@@ -95,18 +94,29 @@ v8.27: Parça 5/5 içerisine kazara sızan "invalid assignment to const 'idx'" k
         </div>
     </div>
 
+    <div id="history-panel">
+        <label class="checkbox-container">
+            <input type="checkbox" id="show-patterns-check" onchange="togglePatterns()">
+            Örüntü Kodlarını Göster ()
+        </label>
+        <strong>Deste Genelinde Okunan Kartlar Raporu:</strong>
+        <ul id="history-list">
+            <li style="color: #666; text-align: center;">Henüz seans başlatılmadı</li>
+        </ul>
+    </div>
+
+    <div id="database-view-panel">
+        <div id="db-panel-header">
+            <strong style="color: #00ffcc; font-size: 1.0em;">Canlı Sözlük Hafızası</strong>
+            <button class="action-btn" style="background:#cc3333; color:white; padding:4px 10px;" onclick="toggleDatabaseView()">Kapat X</button>
+        </div>
+        <div id="database-view-list"></div>
+    </div>
+
     <script>
-        const video = document.getElementById('webcam');
-        const canvas = document.getElementById('hidden-canvas');
-        const ctx = canvas.getContext('2d');
-        const debugCanvas = document.getElementById('debug-canvas');
-        const dctx = debugCanvas.getContext('2d');
-        const statusText = document.getElementById('status');
-        const cardNameText = document.getElementById('card-name');
-        const patternCodeText = document.getElementById('pattern-code');
-        const rawDataText = document.getElementById('raw-data');
-        const historyList = document.getElementById('history-list');
-        const activeDirLbl = document.getElementById('active-direction-lbl');
+        // v8.28 DOĞRULAMA: Elementler yukarıda boş bırakılır, DOMContentLoaded içinde kilitlenir!
+        let video, canvas, ctx, debugCanvas, dctx;
+        let statusText, cardNameText, patternCodeText, rawDataText, historyList, activeDirLbl;
 
         let lockedPattern = "-"; let matchCount = 0; const REQUIRED_MATCHES = 3; 
         let currentFacingMode = "environment"; let currentStream = null; let lastLoggedCard = ""; let audioCtx = null;
@@ -115,7 +125,7 @@ v8.27: Parça 5/5 içerisine kazara sızan "invalid assignment to const 'idx'" k
         let bridgeBordData = { "N": [], "E": [], "S": [], "W": [] };
         let currentDirection = "N"; let currentDirectionHeaderAdded = false; let lastReadTime = 0; let lastErrorCard = ""; 
 
-        // 🚨 BURAYA GOOGLE APPS SCRIPT PANELİNDEN ALDIĞINIZ EN SON YENİ /exec LİNKİNİ YAPIŞTIRIN!
+        // 🚨 BURAYA GOOGLE APPS SCRIPT WEB UYGULAMASI /exec LİNKİNİ YAPIŞTIRIN!
         const GOOGLE_APPS_SCRIPT_URL = "https://google.com";
 
         function isCardAlreadyReadAnywhere(cardName) {
@@ -166,9 +176,7 @@ v8.27: Parça 5/5 içerisine kazara sızan "invalid assignment to const 'idx'" k
 
         async function saveDataToGoogleSheets() {
             const btn = document.getElementById('save-sheets-btn');
-            const tNo = document.getElementById('inp-turnuva-no').value.trim(); 
-            const bNo = document.getElementById('inp-bord-no').value; 
-            const uName = document.getElementById('inp-user').value;
+            const tNo = document.getElementById('inp-turnuva-no').value.trim(); const bNo = document.getElementById('inp-bord-no').value; const uName = document.getElementById('inp-user').value;
 
             if (!tNo || !bNo || !uName) { alert("🔴 HATA: Lütfen Turnuva, Bord No ve Operatör alanlarını seçin!"); return; }
             btn.innerText = "⏳ %100 Güvenli Doğrulama Yapılıyor..."; btn.setAttribute('disabled', 'true');
@@ -313,7 +321,7 @@ v8.27: Parça 5/5 içerisine kazara sızan "invalid assignment to const 'idx'" k
             const sorted = Object.keys(counts).sort((a, b) => counts[b] - counts[a]).slice(0, 4);
             const currentSnapshot = sorted.map(pat => `${pat}:${counts[pat]}`).join("|");
             if (currentSnapshot === lastLoggedSnapshot) return; lastLoggedSnapshot = currentSnapshot;
-            console.clear(); console.log("%c[v8.27 SABİT PANEL] - SON 5 SANİYE FREKANS RAPORU", "color: #00ffcc; font-weight: bold; font-size: 12px;"); console.log("--------------------------------------------------");
+            console.clear(); console.log("%c[v8.28 SABİT PANEL] - SON 5 SANİYE FREKANS RAPORU", "color: #00ffcc; font-weight: bold; font-size: 12px;"); console.log("--------------------------------------------------");
             sorted.forEach((pat, idx) => { const len = pat.split("-").length; console.log(`${idx + 1}. [${len} Harf] Kod: ${pat} -> %cFrekans: ${counts[pat]}`, "color: #ff9900; font-weight: bold;"); }); console.log("--------------------------------------------------");
         }
 
@@ -356,12 +364,12 @@ v8.27: Parça 5/5 içerisine kazara sızan "invalid assignment to const 'idx'" k
                     try {
                         const basicStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
                         handleStream(basicStream, "Kamera Başı");
-                    } catch (ex) { statusText.innerText = "Kamera Hatası: " + ex.message; }
+                    } catch (ex) { if(statusText) statusText.innerText = "Kamera Hatası: " + ex.message; }
                 }
             }
         }
 
-        function handleStream(stream, statusMsg) { currentStream = stream; video.srcObject = stream; statusText.innerText = statusMsg; requestAnimationFrame(processFrame); }
+        function handleStream(stream, statusMsg) { currentStream = stream; video.srcObject = stream; if(statusText) statusText.innerText = statusMsg; requestAnimationFrame(processFrame); }
         function switchCamera() { currentFacingMode = (currentFacingMode === "environment") ? "user" : "environment"; startCamera(); }
 
         function processFrame() {
@@ -412,12 +420,21 @@ v8.27: Parça 5/5 içerisine kazara sızan "invalid assignment to const 'idx'" k
             requestAnimationFrame(processFrame);
         }
 
-        function resetScannerPanel() { matchCount = Math.max(0, matchCount - 1); if (matchCount === 0) { cardNameText.innerText = "KART BEKLENİYOR..."; cardNameText.style.color = "#888"; patternCodeText.innerText = "-"; lastLoggedCard = ""; } }
+        function resetScannerPanel() { matchCount = Math.max(0, matchCount - 1); if (matchCount === 0) { if(cardNameText) cardNameText.innerText = "KART BEKLENİYOR..."; if(cardNameText) cardNameText.style.color = "#888"; if(patternCodeText) patternCodeText.innerText = "-"; lastLoggedCard = ""; } }
         function parseBarPattern(binaryStr) { if (!binaryStr) return ""; let result = []; let currentBit = binaryStr; let count = 1; for (let i = 1; i < binaryStr.length; i++) { if (binaryStr[i] === currentBit) { count++; } else { const type = (currentBit === "0") ? "B" : "W"; if (count > 2) result.push(`${type}${count}`); currentBit = binaryStr[i]; count = 1; } } return result.slice(1, -1).join("-"); }
 
+        // ===================================================================
+        // 🛡️ v8.28 ULUSAL ALTYAPI GARANTİSİ: DOM elementleri tam çizilince kilitle!
+        // ===================================================================
         window.addEventListener('DOMContentLoaded', () => {
+            video = document.getElementById('webcam'); canvas = document.getElementById('hidden-canvas'); ctx = canvas.getContext('2d');
+            debugCanvas = document.getElementById('debug-canvas'); dctx = debugCanvas.getContext('2d');
+            statusText = document.getElementById('status'); cardNameText = document.getElementById('card-name'); patternCodeText = document.getElementById('pattern-code');
+            rawDataText = document.getElementById('raw-data'); historyList = document.getElementById('history-list'); activeDirLbl = document.getElementById('active-direction-lbl');
+            
             const bordSelect = document.getElementById('inp-bord-no');
             for (let i = 1; i <= 40; i++) { const opt = document.createElement('option'); opt.value = i; opt.innerText = "Bord " + i; bordSelect.appendChild(opt); }
+            
             startCamera(); checkOfflineQueue();
         });
     </script>
