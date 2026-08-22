@@ -11,9 +11,11 @@ v8.15: Mükerrer kart algılandığında History listesine kalıcı kırmızı u
 v8.16: Mükerrer kartlar için bağımsız ses motoru eklendi.
 v8.17: Kaba hata sesi akustik "Bip-bop" tonuna çevrildi. Tekil uyarı basma eklendi.
 v8.18: updateBridgeUI fonksiyonu içine kaçan "NCN" yazım hatası temizlendi.
-v8.19: Google Sheets (Etablolar) tam entegrasyonu sağlandı. Arayüzün en üstüne
-       Turnuva No, Bord No, User giriş alanları eklendi. 52 kart (Tüm Bord) 
-       eksiksiz tamamlandığında canlanan manuel veri gönderme butonu yerleştirildi.
+v8.19: Google Sheets (Etablolar) tam entegrasyonu sağlandı. Manuel kaydetme buton eklendi.
+v8.20: Acil durum "Manuel Bypass" motoru kuruldu. Arayüze kırmızı renkli "13'e Tamamla"
+       butonu eklendi. Okunmayan sorunlu kartlar olduğunda, yönü bozmadan eksik kalan
+       boşlukları otomatik olarak sıralı "X1, X2..." sanal kartlarıyla doldurup vites arttıran
+       ve toplam 13 kart kuralını garantiye alan akıllı bypass fonksiyonu yazıldı.
 ===================================================================
 -->
 <!DOCTYPE html>
@@ -21,13 +23,13 @@ v8.19: Google Sheets (Etablolar) tam entegrasyonu sağlandı. Arayüzün en üst
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jannersten Kart Barkod Okuyucu - v8.19 ETABLO ENTEGRELİ</title>
+    <title>Jannersten Kart Barkod Okuyucu - v8.20 BYPASS MOTORLU</title>
     <link rel="stylesheet" href="style.css">
     <script src="barkod-data.js"></script>
 </head>
 <body>
 
-    <h2>Jannersten Tarayıcı (v8.19 - Google Sheets)</h2>
+    <h2>Jannersten Tarayıcı (v8.20 - Manuel Bypass)</h2>
     
     <!-- 📝 GOOGLE SHEETS DATA GİRİŞ KUTULARI -->
     <div id="bridge-inputs">
@@ -54,10 +56,11 @@ v8.19: Google Sheets (Etablolar) tam entegrasyonu sağlandı. Arayüzün en üst
     </div>
 
     <div class="btn-group">
-        <button id="switch-camera-btn" class="action-btn" onclick="switchCamera()">Kamera Değiştir</button>
-        <button id="clear-history-btn" class="action-btn" onclick="clearHistory()">Seansı Sıfırla</button>
-        <button id="clear-console-btn" class="action-btn" onclick="clearConsoleLog()">Konsolu Temizle</button>
-        <button id="view-database-btn" class="action-btn" onclick="toggleDatabaseView()">Veritabanı</button>
+        <button id="switch-camera-btn" class="action-btn" onclick="switchCamera()">Kamera</button>
+        <button id="clear-history-btn" class="action-btn" onclick="clearHistory()">Sıfırla</button>
+        <button id="clear-console-btn" class="action-btn" onclick="clearConsoleLog()">Konsol</button>
+        <button id="view-database-btn" class="action-btn" onclick="toggleDatabaseView()">Sözlük</button>
+        <button id="bypass-dir-btn" class="action-btn" onclick="bypassCurrentDirectionTo13()">⏩ 13'e Tamamla</button>
     </div>
 
     <!-- 📥 52 KART BİTTİĞİNDE CANLANACAK MANUEL KAYDETME BUTONU -->
@@ -81,37 +84,7 @@ v8.19: Google Sheets (Etablolar) tam entegrasyonu sağlandı. Arayüzün en üst
         </div>
     </div>
 
-    <div id="history-panel">
-        <label class="checkbox-container">
-            <input type="checkbox" id="show-patterns-check" onchange="togglePatterns()">
-            Örüntü Kodlarını Göster ()
-        </label>
-        <strong>Deste Genelinde Okunan Kartlar Raporu:</strong>
-        <ul id="history-list">
-            <li style="color: #666; text-align: center;">Henüz seans başlatılmadı</li>
-        </ul>
-    </div>
-
-    <div id="database-view-panel">
-        <div id="db-panel-header">
-            <strong style="color: #00ffcc; font-size: 1.0em;">Canlı Sözlük Hafızası</strong>
-            <button class="action-btn" style="background:#cc3333; color:white; padding:4px 10px;" onclick="toggleDatabaseView()">Kapat X</button>
-        </div>
-        <div id="database-view-list"></div>
-    </div>
-
     <script>
-        const video = document.getElementById('webcam');
-        const canvas = document.getElementById('hidden-canvas');
-        const ctx = canvas.getContext('2d');
-        
-        const debugCanvas = document.getElementById('debug-canvas');
-        const dctx = debugCanvas.getContext('2d');
-
-        const statusText = document.getElementById('status');
-        const cardNameText = document.getElementById('card-name');
-        const patternCodeText = document.getElementById('pattern-code');
-        const rawDataText = document.getElementById('raw-data');
         const historyList = document.getElementById('history-list');
         const activeDirLbl = document.getElementById('active-direction-lbl');
 
@@ -129,7 +102,7 @@ v8.19: Google Sheets (Etablolar) tam entegrasyonu sağlandı. Arayüzün en üst
         let lastLoggedSnapshot = ""; 
 
         // ===================================================================
-        // 🃏 v8.19 BRİÇ SEANS HAFIZASI VE GOOGLE SHEETS TRANSFER MOTORU
+        // 🃏 v8.20 BRİÇ SEANS HAFIZASI VE ACİL DURUM MANUEL BYPASS MOTORU
         // ===================================================================
         let bridgeBordData = { "N": [], "E": [], "S": [], "W": [] };
         let currentDirection = "N"; 
@@ -137,14 +110,53 @@ v8.19: Google Sheets (Etablolar) tam entegrasyonu sağlandı. Arayüzün en üst
         let lastReadTime = 0; 
         let lastErrorCard = ""; 
 
-        // 🚨 BURAYA GOOGLE APPS SCRIPT'TEN ALDIĞINIZ WEB UYGULAMASI URL ADRESİNİ YAPIŞTIRIN!
-        const GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzDnF4VH9EE4OdTzrxY6tl94tERLUuCC7MtlSbUlruCx_q-vgw9Q-n-Cf61gmtPV2Cy5g/exec";
+        const GOOGLE_APPS_SCRIPT_URL = "https://google.com";
 
         function isCardAlreadyReadAnywhere(cardName) {
             return bridgeBordData["N"].includes(cardName) ||
                    bridgeBordData["E"].includes(cardName) ||
                    bridgeBordData["S"].includes(cardName) ||
                    bridgeBordData["W"].includes(cardName);
+        }
+
+        // v8.20 YENİ EKLEME: ACİL DURUM MANUEL BYPASS FONSİYONU
+        function bypassCurrentDirectionTo13() {
+            if (currentDirection === "DONE") return;
+            
+            const currentCount = bridgeBordData[currentDirection].length;
+            const missingCount = 13 - currentCount;
+            
+            if (missingCount <= 0) return; // Zaten 13 ise işlem yapma
+            
+            if (confirm(`${currentDirection} yönünde eksik kalan ${missingCount} kart sanal 'X' koduyla doldurularak kapatılsın mı?`)) {
+                
+                // Eğer bu yönün başına hiç başlık atılmadıysa önce başlığı çakar
+                if (!currentDirectionHeaderAdded) {
+                    const dirNamesTr = { "N": "KUZEY (NORTH)", "E": "DOĞU (EAST)", "S": "GÜNEY (SOUTH)", "W": "BATI (WEST)" };
+                    const headerLi = document.createElement('li');
+                    headerLi.style.cssText = "display: block; color: #ff9900; font-weight: bold; margin-top: 8px; margin-bottom: 2px; border-bottom: 1px dashed #444; font-size: 0.9em;";
+                    headerLi.innerText = `--- ${dirNamesTr[currentDirection]} ---`;
+                    historyList.prepend(headerLi);
+                    currentDirectionHeaderAdded = true;
+                }
+
+                // Döngü eksik olan adet kadar benzersiz sanal kart üretip hafızaya basar
+                for (let i = 1; i <= missingCount; i++) {
+                    // Destedeki küresel filtreyi aşması için yön ismi ve index birleştirilir (Örn: NX1, NX2)
+                    const virtualCardName = `${currentDirection}X${currentCount + i}`;
+                    
+                    bridgeBordData[currentDirection].push(virtualCardName);
+                    
+                    const li = document.createElement('li');
+                    li.style.cssText = "color: #d1ccc0; font-style: italic;"; // Manuel eklendiği belli olsun diye hafif soluk italik stil
+                    li.innerHTML = `<span class="num">${bridgeBordData[currentDirection].length}- </span><span class="card">${virtualCardName}</span>, `;
+                    historyList.prepend(li);
+                }
+                
+                playBeep(); // Kibar bir onay sesi verir
+                updateBridgeUI();
+                checkAndAdvanceDirection(); // Vitesi hemen bir sonraki yöne fırlatır!
+            }
         }
 
         function checkAndAdvanceDirection() {
@@ -159,12 +171,14 @@ v8.19: Google Sheets (Etablolar) tam entegrasyonu sağlandı. Arayüzün en üst
                     activeDirLbl.innerText = "BORD TAMAMLANDI! (52/52)";
                     activeDirLbl.style.color = "#00ffcc";
                     
-                    // 52 kart bittiğinde manuel kaydetme butonunun kilidini açar ve parlatır!
+                    // Bypass butonunu seans bitince gizler
+                    document.getElementById('bypass-dir-btn').style.display = "none";
+                    
                     document.getElementById('save-sheets-btn').removeAttribute('disabled');
                     document.getElementById('save-sheets-btn').style.background = "#00ffcc";
                     document.getElementById('save-sheets-btn').style.color = "#111";
                     
-                    alert("52 Kart Eksiksiz Okundu! Lütfen Sütun Alanlarını Kontrol Edip Google Sheets'e Kaydedin.");
+                    alert("52 Kart Tamamlandı! Verileri Google Sheets'e Kaydedebilirsiniz.");
                     return;
                 }
                 
@@ -188,7 +202,6 @@ v8.19: Google Sheets (Etablolar) tam entegrasyonu sağlandı. Arayüzün en üst
             document.getElementById('count-W').innerText = bridgeBordData["W"].length;
         }
 
-        // KULLANICI BUTONA BASTIĞINDA VERİYİ VİRGÜLLERLE PAKETLEYİP GOOGLE'A ATAN ARALIKLI FONKSİYON
         async function saveDataToGoogleSheets() {
             const btn = document.getElementById('save-sheets-btn');
             const tNo = document.getElementById('inp-turnuva-no').value.trim() || "-";
@@ -196,14 +209,11 @@ v8.19: Google Sheets (Etablolar) tam entegrasyonu sağlandı. Arayüzün en üst
             const uName = document.getElementById('inp-user').value.trim() || "-";
             const curDate = new Date().toLocaleDateString('tr-TR') + " " + new Date().toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'});
 
-            btn.innerText = "⏳ Veri Gönderiliyor, Bekleyin...";
+            btn.innerText = "⏳ Veri Gönderiliyor...";
             btn.setAttribute('disabled', 'true');
 
-            // 13'er kartlık havuzları yan yana virgüllerle birleştirip paketler
             const payload = {
-                turnuvaNo: tNo,
-                tarih: curDate,
-                bordNo: bNo,
+                turnuvaNo: tNo, tarih: curDate, bordNo: bNo,
                 north: bridgeBordData["N"].join(","),
                 east: bridgeBordData["E"].join(","),
                 south: bridgeBordData["S"].join(","),
@@ -212,22 +222,18 @@ v8.19: Google Sheets (Etablolar) tam entegrasyonu sağlandı. Arayüzün en üst
             };
 
             try {
-                const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
-                    method: "POST",
-                    mode: "no-cors", // Güvenlik sertifikası (CORS) engeline takılmadan Win7 ve Cepten uçurur
+                await fetch(GOOGLE_APPS_SCRIPT_URL, {
+                    method: "POST", mode: "no-cors",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload)
                 });
-                
                 btn.innerText = "✅ BAŞARIYLA KAYDEDİLDİ";
-                btn.style.background = "#2a7a4a";
-                btn.style.color = "#fff";
+                btn.style.background = "#2a7a4a"; btn.style.color = "#fff";
                 alert("Bord Verileri Başarıyla Google Sheets Dosyanıza İşlendi!");
             } catch (err) {
                 btn.innerText = "❌ HATA OLUŞTU! TEKRAR DENEYİN";
-                btn.removeAttribute('disabled');
-                btn.style.background = "#cc3333";
-                alert("Bağlantı Hatası! Veri gönderilemedi: " + err.message);
+                btn.removeAttribute('disabled'); btn.style.background = "#cc3333";
+                alert("Bağlantı Hatası: " + err.message);
             }
         }
 
@@ -290,12 +296,14 @@ v8.19: Google Sheets (Etablolar) tam entegrasyonu sağlandı. Arayüzün en üst
                 lastReadTime = 0;
                 lastErrorCard = "";
                 lastLoggedCard = "";
+                
+                document.getElementById('bypass-dir-btn').style.display = "inline-block";
+                
                 historyList.innerHTML = '<li style="color: #666; text-align: center;">Henüz seans başlatılmadı</li>';
                 
                 const btn = document.getElementById('save-sheets-btn');
                 btn.setAttribute('disabled', 'true');
-                btn.style.background = "#333";
-                btn.style.color = "#777";
+                btn.style.background = "#333"; btn.style.color = "#777";
                 btn.innerText = "📥 Bordu Google Sheets'e Kaydet";
 
                 ["N","E","S","W"].forEach(d => { document.getElementById(`dir-box-${d}`).className = "direction-box"; });
@@ -345,7 +353,7 @@ v8.19: Google Sheets (Etablolar) tam entegrasyonu sağlandı. Arayüzün en üst
             const currentSnapshot = sorted.map(pat => `${pat}:${counts[pat]}`).join("|");
             if (currentSnapshot === lastLoggedSnapshot) return; lastLoggedSnapshot = currentSnapshot;
             console.clear();
-            console.log("%c[v8.19 SABİT PANEL] - SON 5 SANİYE FREKANS RAPORU", "color: #00ffcc; font-weight: bold; font-size: 12px;");
+            console.log("%c[v8.20 SABİT PANEL] - SON 5 SANİYE FREKANS RAPORU", "color: #00ffcc; font-weight: bold; font-size: 12px;");
             console.log("--------------------------------------------------");
             sorted.forEach((pat, idx) => { const len = pat.split("-").length; console.log(`${idx + 1}. [${len} Harf] Kod: ${pat} -> %cFrekans: ${counts[pat]}`, "color: #ff9900; font-weight: bold;"); });
             console.log("--------------------------------------------------");
@@ -369,7 +377,7 @@ v8.19: Google Sheets (Etablolar) tam entegrasyonu sağlandı. Arayüzün en üst
             try {
                 if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
                 if (audioCtx.state === 'suspended') { audioCtx.resume(); }
-                const osc = audioCtx.createOscillator(); const gain = document.getElementById('hidden-canvas') ? audioCtx.createGain() : audioCtx.createGain();
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
                 osc.type = 'sine'; osc.frequency.setValueAtTime(950, audioCtx.currentTime); gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
                 osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.18);
             } catch (e) { console.log("Ses hatası: ", e); }
@@ -399,7 +407,7 @@ v8.19: Google Sheets (Etablolar) tam entegrasyonu sağlandı. Arayüzün en üst
                 } catch (e) {
                     try {
                         const basicStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-                        handleStream(basicStream, "Test Modu");
+                        handleStream(basicStream, "Kamera Hatası");
                     } catch (ex) { statusText.innerText = "Kamera Hatası: " + ex.message; }
                 }
             }
@@ -485,11 +493,6 @@ v8.19: Google Sheets (Etablolar) tam entegrasyonu sağlandı. Arayüzün en üst
                 if (!validPatternFound) { resetScannerPanel(); }
             }
             requestAnimationFrame(processFrame);
-        }
-
-        function resetScannerPanel() {
-            matchCount = Math.max(0, matchCount - 1);
-            if (matchCount === 0) { cardNameText.innerText = "KART BEKLENİYOR..."; cardNameText.style.color = "#888"; patternCodeText.innerText = "-"; lastLoggedCard = ""; }
         }
 
         function parseBarPattern(binaryStr) {
