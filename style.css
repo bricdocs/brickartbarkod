@@ -1,4 +1,4 @@
-/* style.css - v8.31 STEALTH MODLU TURNUVA MODELİ */
+/* style.css - v8.34 ISI DÜŞÜRÜCÜ OPAK GİZLEME MODELİ */
 body {
     font-family: Arial, sans-serif;
     text-align: center;
@@ -103,9 +103,15 @@ video {
     display: inline-block;
 }
 
-/* 👁️ v8.31 STEALTH MODU GÖRÜNMEZLİK ZIRHI (Motoru Durdurmaz, Ekranı Gizler) */
+/* 👁️ v8.34 DOĞRU STEALTH GİZLEME SINIFI (Tarayıcıyı kandırır, donmayı önler, telefonu serin tutar) */
 .stealth-hidden {
-    display: none !important;
+    opacity: 0.001 !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
 }
 
 #result-panel {
@@ -157,7 +163,7 @@ video {
     font-size: 0.85em;
 }
 #switch-camera-btn { background: #ff9900; color: #111; }
-#stealth-btn { background: #6c5ce7; color: #fff; } /* Stealth Butonu */
+#stealth-btn { background: #6c5ce7; color: #fff; }
 #clear-history-btn { background: #cc3333; color: #fff; }
 #clear-console-btn { background: #3399ff; color: #fff; }
 #view-database-btn { background: #00ffcc; color: #111; }
