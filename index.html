@@ -9,11 +9,10 @@ v8.20: Acil durum "Manuel Bypass" motoru kuruldu. Arayüze "13'e Tamamla" butonu
 v8.22: DOM yüklenme sırasından kaynaklanan element null hataları düzeltildi.
 v8.24: Çevrimdışı localStorage yedeği, post doğrulama motoru ve Seçenek B kuruldu.
 v8.26: Operatör (User) giriş alanı alfabetik sıralı Select menüsüne dönüştürüldü.
-v8.27: "idx" klavye hatası temizlendi. Başlıklar "Barkod Tarayıcı" yapıldı.
-v8.28: historyList null hatası element tanımları DOMContentLoaded içine alınarak çözüldü.
 v8.31: Isınmayı önlemek ve ekranı kapatmak için "Stealth Mode" şalteri kuruldu.
 v8.32: Google Sheets URL linki sökülerek harici "google-config.js" dosyasına taşındı.
-       Önceki sürümlerdeki tüm mükerrer ve hatalı script kapatma etiketleri kazındı.
+v8.33: v8.26'dan beri operatör select dönüşümünde HTML'den kazara silinen ve sistemi felç
+       eden "<ul id='history-list'>" kök etiketi yerine geri çakıldı. Hata hafızaya alındı.
 ===================================================================
 -->
 <!DOCTYPE html>
@@ -21,14 +20,14 @@ v8.32: Google Sheets URL linki sökülerek harici "google-config.js" dosyasına 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barkod Okuyucu - v8.32 HARİCİ KÜTÜPHANELİ</title>
+    <title>Barkod Okuyucu - v8.33 GÜVENCELİ SÜRÜM</title>
     <link rel="stylesheet" href="style.css">
     <script src="google-config.js"></script>
     <script src="barkod-data.js"></script>
 </head>
 <body>
 
-    <h2>Barkod Tarayıcı (v8.32 - Harici Linkli)</h2>
+    <h2>Barkod Tarayıcı (v8.33 - Hatasız Akış)</h2>
     
     <div id="bridge-inputs">
         <input type="text" id="inp-turnuva-no" value="22.08.2026" placeholder="Turnuva NO">
@@ -94,6 +93,26 @@ v8.32: Google Sheets URL linki sökülerek harici "google-config.js" dosyasına 
             </label>
             <span id="raw-data" class="binary-output raw-hidden">-</span>
         </div>
+    </div>
+
+    <!-- 📊 v8.33 MUTLU SON: FELAKETLERE YOL AÇAN VE KAYBOLAN O KÖK ETİKET BURAYA SAPASAĞLAM ÇAKILDI! -->
+    <div id="history-panel">
+        <label class="checkbox-container">
+            <input type="checkbox" id="show-patterns-check" onchange="togglePatterns()">
+            Örüntü Kodlarını Göster ()
+        </label>
+        <strong>Deste Genelinde Okunan Kartlar Raporu:</strong>
+        <ul id="history-list">
+            <li style="color: #666; text-align: center;">Henüz seans başlatılmadı</li>
+        </ul>
+    </div>
+
+    <div id="database-view-panel">
+        <div id="db-panel-header">
+            <strong style="color: #00ffcc; font-size: 1.0em;">Canlı Sözlük Hafızası</strong>
+            <button class="action-btn" style="background:#cc3333; color:white; padding:4px 10px;" onclick="toggleDatabaseView()">Kapat X</button>
+        </div>
+        <div id="database-view-list"></div>
     </div>
 
     <script>
@@ -181,7 +200,6 @@ v8.32: Google Sheets URL linki sökülerek harici "google-config.js" dosyasına 
             const offlineKey = `bridge_backup_${tNo}_${bNo}`; localStorage.setItem(offlineKey, JSON.stringify(payload));
 
             try {
-                // GOOGLE_APPS_SCRIPT_URL artık en üstteki google-config.js dosyasından pürüzsüz okunur!
                 const response = await fetch(GOOGLE_APPS_SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload) });
                 const resJson = await response.json();
 
@@ -285,7 +303,7 @@ v8.32: Google Sheets URL linki sökülerek harici "google-config.js" dosyasına 
         }
 
         function pushToDiagnosticsBuffer(patternStr) { const now = Date.now(); diagnosticsBuffer.push({ pattern: patternStr, timestamp: now }); if (now - lastConsoleLogTime > 500) { processAndLogToConsole(now); lastConsoleLogTime = now; } }
-        function processAndLogToConsole(now) { diagnosticsBuffer = diagnosticsBuffer.filter(item => (now - item.timestamp) < 5000); if (diagnosticsBuffer.length === 0) return; const counts = {}; diagnosticsBuffer.forEach(item => { counts[item.pattern] = (counts[item.pattern] || 0) + 1; }); const sorted = Object.keys(counts).sort((a, b) => counts[b] - counts[a]).slice(0, 4); const currentSnapshot = sorted.map(pat => `${pat}:${counts[pat]}`).join("|"); if (currentSnapshot === lastLoggedSnapshot) return; lastLoggedSnapshot = currentSnapshot; console.clear(); console.log("%c[v8.32 FREKANS RAPORU]", "color: #00ffcc; font-weight: bold;"); sorted.forEach((pat, idx) => { console.log(`${idx + 1}. Kod: ${pat} -> %cFrekans: ${counts[pat]}`, "color: #ff9900; font-weight: bold;"); }); }
+        function processAndLogToConsole(now) { diagnosticsBuffer = diagnosticsBuffer.filter(item => (now - item.timestamp) < 5000); if (diagnosticsBuffer.length === 0) return; const counts = {}; diagnosticsBuffer.forEach(item => { counts[item.pattern] = (counts[item.pattern] || 0) + 1; }); const sorted = Object.keys(counts).sort((a, b) => counts[b] - counts[a]).slice(0, 4); const currentSnapshot = sorted.map(pat => `${pat}:${counts[pat]}`).join("|"); if (currentSnapshot === lastLoggedSnapshot) return; lastLoggedSnapshot = currentSnapshot; console.clear(); console.log("%c[v8.33 FREKANS RAPORU]", "color: #00ffcc; font-weight: bold;"); sorted.forEach((pat, idx) => { console.log(`${idx + 1}. Kod: ${pat} -> %cFrekans: ${counts[pat]}`, "color: #ff9900; font-weight: bold;"); }); }
         function clearConsoleLog() { diagnosticsBuffer = []; lastLoggedSnapshot = ""; console.clear(); }
         function togglePatterns() { const isChecked = document.getElementById('show-patterns-check').checked; const patterns = historyList.querySelectorAll('.pattern'); patterns.forEach(p => { if (isChecked) { p.classList.remove('pattern-hidden'); } else { p.classList.add('pattern-hidden'); } }); }
         function toggleRawData() { const isChecked = document.getElementById('show-raw-check').checked; const rawDataBox = document.getElementById('raw-data'); if (isChecked) { rawDataBox.classList.remove('raw-hidden'); } else { rawDataBox.classList.add('raw-hidden'); } }
