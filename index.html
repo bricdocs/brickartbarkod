@@ -9,11 +9,11 @@ v8.20: Acil durum "Manuel Bypass" motoru kuruldu. Arayüze "13'e Tamamla" butonu
 v8.22: DOM yüklenme sırasından kaynaklanan element null hataları düzeltildi.
 v8.24: Çevrimdışı localStorage yedeği, post doğrulama motoru ve Seçenek B kuruldu.
 v8.26: Operatör (User) giriş alanı alfabetik sıralı Select menüsüne dönüştürüldü.
+v8.27: "idx" klavye hatası temizlendi. Başlıklar "Barkod Tarayıcı" yapıldı.
 v8.28: historyList null hatası element tanımları DOMContentLoaded içine alınarak çözüldü.
-v8.31: Operatörün arka kamerayı kendine dönük kullanırken telefonun aşırı ısınmasını, 
-       pil ve ekran kartı tüketimini sıfırlamak için "Stealth Mode" şalteri kuruldu. 
-       "Stealth Kapat" butonu ile arka planda tarama motoru kurşun geçirmez biçimde 
-       kartları biplemeye devam ederken, ekrandaki video akışı tamamen görünmez yapılır.
+v8.31: Isınmayı önlemek ve ekranı kapatmak için "Stealth Mode" şalteri kuruldu.
+v8.32: Google Sheets URL linki sökülerek harici "google-config.js" dosyasına taşındı.
+       Önceki sürümlerdeki tüm mükerrer ve hatalı script kapatma etiketleri kazındı.
 ===================================================================
 -->
 <!DOCTYPE html>
@@ -21,15 +21,15 @@ v8.31: Operatörün arka kamerayı kendine dönük kullanırken telefonun aşır
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barkod Okuyucu - v8.31 GİZLİLİK MODLU</title>
+    <title>Barkod Okuyucu - v8.32 HARİCİ KÜTÜPHANELİ</title>
     <link rel="stylesheet" href="style.css">
+    <script src="google-config.js"></script>
     <script src="barkod-data.js"></script>
 </head>
 <body>
 
-    <h2>Barkod Tarayıcı (v8.31 - Stealth)</h2>
+    <h2>Barkod Tarayıcı (v8.32 - Harici Linkli)</h2>
     
-    <!-- 📝 DATA GİRİŞ KUTULARI VE SELECT MENÜSÜ -->
     <div id="bridge-inputs">
         <input type="text" id="inp-turnuva-no" value="22.08.2026" placeholder="Turnuva NO">
         <select id="inp-bord-no">
@@ -50,7 +50,6 @@ v8.31: Operatörün arka kamerayı kendine dönük kullanırken telefonun aşır
         </select>
     </div>
 
-    <!-- 🃏 BRİÇ MOBİL CANLI SAYAÇ VE YÖN PANELİ -->
     <div id="bridge-dashboard">
         <div id="dir-box-N" class="direction-box active-dir">KUZEY (N)<br><span id="count-N">0</span> / 13</div>
         <div id="dir-box-E" class="direction-box">DOĞU (E)<br><span id="count-E">0</span> / 13</div>
@@ -58,7 +57,6 @@ v8.31: Operatörün arka kamerayı kendine dönük kullanırken telefonun aşır
         <div id="dir-box-W" class="direction-box">BATI (W)<br><span id="count-W">0</span> / 13</div>
     </div>
 
-    <!-- 📷 TARAMA PENCERELERİ (STEALTH BUTONUYLA GİZLENEN ALAN) -->
     <div id="scanner-container">
         <video id="webcam" autoplay playsinline muted></video>
         <div id="laser-guide"></div>
@@ -77,7 +75,6 @@ v8.31: Operatörün arka kamerayı kendine dönük kullanırken telefonun aşır
         <button id="bypass-dir-btn" class="action-btn" onclick="bypassCurrentDirectionTo13()">⏩ 13'e Tamamla</button>
     </div>
 
-    <!-- 📥 GÖNDERME VE SEÇENEK B BUTONLARI -->
     <div class="btn-group">
         <button id="save-sheets-btn" class="action-btn" onclick="saveDataToGoogleSheets()" disabled>📥 Bordu Google Sheets'e Kaydet</button>
         <button id="next-bord-btn" class="action-btn" onclick="advanceToNextBord()">⏭️ Sonraki Borda Geç / Ekranı Temizle</button>
@@ -100,7 +97,6 @@ v8.31: Operatörün arka kamerayı kendine dönük kullanırken telefonun aşır
     </div>
 
     <script>
-        // v8.28 Kök Sigortası: Sayfa tam dolunca elementleri kilitler
         let video, canvas, ctx, debugCanvas, dctx;
         let statusText, cardNameText, patternCodeText, rawDataText, historyList, activeDirLbl;
 
@@ -111,30 +107,20 @@ v8.31: Operatörün arka kamerayı kendine dönük kullanırken telefonun aşır
         let bridgeBordData = { "N": [], "E": [], "S": [], "W": [] };
         let currentDirection = "N"; let currentDirectionHeaderAdded = false; let lastReadTime = 0; let lastErrorCard = ""; 
 
-        // 🚨 BURAYA v8.28'DE ÇALIŞAN KENDİ APPS SCRIPT /exec LİNKİNİZİ EKSİKSİZ YAPIŞTIRIN!
-        const GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzDnF4VH9EE4OdTzrxY6tl94tERLUuCC7MtlSbUlruCx_q-vgw9Q-n-Cf61gmtPV2Cy5g/exec";
-
         function isCardAlreadyReadAnywhere(cardName) {
             return bridgeBordData["N"].includes(cardName) || bridgeBordData["E"].includes(cardName) || bridgeBordData["S"].includes(cardName) || bridgeBordData["W"].includes(cardName);
         }
 
-        // 👁️ v8.31 YENİ EKLEME: TARAMA MOTORUNA DOKUNMADAN EKRAN VİDEOSUNU GİZLEYEN GİZLİLİK ŞALTERİ
         function toggleStealthMode() {
             const scanBox = document.getElementById('scanner-container');
             const previewBox = document.getElementById('preview-container');
             const stealthBtn = document.getElementById('stealth-btn');
-            
-            // Eğer pencere gizliyse görünür yap, görünürse gizle!
             if (scanBox.classList.contains('stealth-hidden')) {
-                scanBox.classList.remove('stealth-hidden');
-                previewBox.classList.remove('stealth-hidden');
-                stealthBtn.innerText = "👁️ Stealth Kapat";
-                stealthBtn.style.background = "#6c5ce7";
+                scanBox.classList.remove('stealth-hidden'); previewBox.classList.remove('stealth-hidden');
+                stealthBtn.innerText = "👁️ Stealth Kapat"; stealthBtn.style.background = "#6c5ce7";
             } else {
-                scanBox.classList.add('stealth-hidden');
-                previewBox.classList.add('stealth-hidden');
-                stealthBtn.innerText = "👁️ Stealth Aç (Gizli)";
-                stealthBtn.style.background = "#222";
+                scanBox.classList.add('stealth-hidden'); previewBox.classList.add('stealth-hidden');
+                stealthBtn.innerText = "👁️ Stealth Aç (Gizli)"; stealthBtn.style.background = "#222";
             }
         }
 
@@ -192,17 +178,16 @@ v8.31: Operatörün arka kamerayı kendine dönük kullanırken telefonun aşır
                 turnuvaNo: tNo, tarih: curDate, bordNo: bNo, north: bridgeBordData["N"].join(","), east: bridgeBordData["E"].join(","), south: bridgeBordData["S"].join(","), west: bridgeBordData["W"].join(","), user: uName
             };
 
-            const offlineKey = `bridge_backup_${tNo}_${bNo}`;
-            localStorage.setItem(offlineKey, JSON.stringify(payload));
+            const offlineKey = `bridge_backup_${tNo}_${bNo}`; localStorage.setItem(offlineKey, JSON.stringify(payload));
 
             try {
+                // GOOGLE_APPS_SCRIPT_URL artık en üstteki google-config.js dosyasından pürüzsüz okunur!
                 const response = await fetch(GOOGLE_APPS_SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload) });
                 const resJson = await response.json();
 
                 if (resJson.status === "EXISTS") {
                     btn.innerText = "❌ MÜKERRER BORD ENGELLENDİ"; btn.style.background = "#cc3333"; btn.style.color = "#fff";
-                    alert(`⚠️ ENGELLENDİ: Bu Turnuva ve Bord No daha önce girilmiş!`);
-                    btn.removeAttribute('disabled'); return;
+                    alert(`⚠️ ENGELLENDİ: Bu Turnuva ve Bord No daha önce girilmiş!`); btn.removeAttribute('disabled'); return;
                 }
                 if (resJson.status === "SUCCESS") {
                     localStorage.removeItem(offlineKey);
@@ -213,28 +198,20 @@ v8.31: Operatörün arka kamerayı kendine dönük kullanırken telefonun aşır
             } catch (err) {
                 btn.innerText = "💾 İNTERNET YOK - TELEFONA YEDEKLENDİ"; btn.style.background = "#ff9900"; btn.style.color = "#111";
                 document.getElementById('next-bord-btn').style.display = "block";
-                alert("⚠️ ÇEVRİMDIŞI MOD: Bağlantı koptu ancak veriler telefon hafızasına güvenle yedeklendi.");
+                alert("⚠️ ÇEVRİMDIŞI MOD: Verileriniz telefon hafızasına güvenle yedeklendi. Bir sonraki borda geçebilirsiniz.");
             }
         }
 
         function advanceToNextBord() {
             const bordSelect = document.getElementById('inp-bord-no'); const currentBordVal = parseInt(bordSelect.value);
             if (currentBordVal && currentBordVal < 40) { bordSelect.value = currentBordVal + 1; } else { bordSelect.value = ""; }
-
             bridgeBordData = { "N": [], "E": [], "S": [], "W": [] };
             currentDirection = "N"; currentDirectionHeaderAdded = false; lastReadTime = 0; lastErrorCard = ""; lastLoggedCard = "";
-            
-            document.getElementById('bypass-dir-btn').style.display = "inline-block";
-            document.getElementById('next-bord-btn').style.display = "none";
-            
-            const saveBtn = document.getElementById('save-sheets-btn');
-            saveBtn.setAttribute('disabled', 'true'); saveBtn.style.background = "#333"; saveBtn.style.color = "#777";
-            saveBtn.innerText = "📥 Bordu Google Sheets'e Kaydet";
-
+            document.getElementById('bypass-dir-btn').style.display = "inline-block"; document.getElementById('next-bord-btn').style.display = "none";
+            const saveBtn = document.getElementById('save-sheets-btn'); saveBtn.setAttribute('disabled', 'true'); saveBtn.style.background = "#333"; saveBtn.style.color = "#777"; saveBtn.innerText = "📥 Bordu Google Sheets'e Kaydet";
             historyList.innerHTML = '<li style="color: #666; text-align: center;">Yeni Bord Seansı Başlatıldı. Kart Bekleniyor..</li>';
             ["N","E","S","W"].forEach(d => { document.getElementById(`dir-box-${d}`).className = "direction-box"; });
-            document.getElementById("dir-box-N").className = "direction-box active-dir";
-            updateBridgeUI(); checkOfflineQueue();
+            document.getElementById("dir-box-N").className = "direction-box active-dir"; updateBridgeUI(); checkOfflineQueue();
         }
 
         async function checkOfflineQueue() {
@@ -245,8 +222,7 @@ v8.31: Operatörün arka kamerayı kendine dönük kullanırken telefonun aşır
                     if (rawData) {
                         try {
                             const res = await fetch(GOOGLE_APPS_SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: rawData });
-                            const json = await res.json();
-                            if (json.status === "SUCCESS" || json.status === "EXISTS") { localStorage.removeItem(key); }
+                            const json = await res.json(); if (json.status === "SUCCESS" || json.status === "EXISTS") { localStorage.removeItem(key); }
                         } catch(e) {}
                     }
                 }
@@ -255,27 +231,20 @@ v8.31: Operatörün arka kamerayı kendine dönük kullanırken telefonun aşır
 
         function addHistoryItem(cardName, pattern) {
             if (currentDirection === "DONE") return;
-            const now = Date.now();
-            if (now - lastReadTime < 2000) { console.log("%c[ZAMAN KİLİDİ ENGELLEDİ]: El hareketi/parlama süzüldü.", "color: #888;"); return; }
+            const now = Date.now(); if (now - lastReadTime < 2000) { return; }
 
             if (isCardAlreadyReadAnywhere(cardName)) {
                 if (cardName === lastErrorCard) { return; }
-                lastErrorCard = cardName; 
-                if (historyList.querySelector('li[style*="center"]')) { historyList.innerHTML = ""; }
-                const errorLi = document.createElement('li');
-                errorLi.style.cssText = "display: block; color: #ff3333; font-size: 0.85em; font-weight: bold; margin: 2px 0; padding-left: 5px; border-left: 3px solid #ff3333;";
-                errorLi.innerText = `[MÜKERRER REDDEDİLDİ]: ${cardName} zaten okutulmuş!`;
-                historyList.prepend(errorLi); playErrorBeep(); return; 
+                lastErrorCard = cardName; if (historyList.querySelector('li[style*="center"]')) { historyList.innerHTML = ""; }
+                const errorLi = document.createElement('li'); errorLi.style.cssText = "display: block; color: #ff3333; font-size: 0.85em; font-weight: bold; margin: 2px 0; padding-left: 5px; border-left: 3px solid #ff3333;";
+                errorLi.innerText = `[MÜKERRER REDDEDİLDİ]: ${cardName} zaten okutulmuş!`; historyList.prepend(errorLi); playErrorBeep(); return; 
             }
 
             if (historyList.querySelector('li[style*="center"]')) { historyList.innerHTML = ""; }
-
             if (!currentDirectionHeaderAdded) {
                 const dirNamesTr = { "N": "KUZEY (NORTH)", "E": "DOĞU (EAST)", "S": "GÜNEY (SOUTH)", "W": "BATI (WEST)" };
-                const headerLi = document.createElement('li');
-                headerLi.style.cssText = "display: block; color: #ff9900; font-weight: bold; margin-top: 8px; margin-bottom: 2px; border-bottom: 1px dashed #444; font-size: 0.9em;";
-                headerLi.innerText = `--- ${dirNamesTr[currentDirection]} ---`;
-                historyList.prepend(headerLi); currentDirectionHeaderAdded = true;
+                const headerLi = document.createElement('li'); headerLi.style.cssText = "display: block; color: #ff9900; font-weight: bold; margin-top: 8px; margin-bottom: 2px; border-bottom: 1px dashed #444; font-size: 0.9em;";
+                headerLi.innerText = `--- ${dirNamesTr[currentDirection]} ---`; historyList.prepend(headerLi); currentDirectionHeaderAdded = true;
             }
 
             bridgeBordData[currentDirection].push(cardName); lastErrorCard = ""; updateBridgeUI();
@@ -285,10 +254,9 @@ v8.31: Operatörün arka kamerayı kendine dönük kullanırken telefonun aşır
         }
 
         function clearHistory() {
-            if(confirm("Tüm seansı ve 4 yönün tarihçe raporunu sıfırlamak istediğinizden emin misiniz?")) {
+            if(confirm("Tüm seansı sıfırlamak istediğinizden emin misiniz?")) {
                 bridgeBordData = { "N": [], "E": [], "S": [], "W": [] }; currentDirection = "N"; currentDirectionHeaderAdded = false; lastReadTime = 0; lastErrorCard = ""; lastLoggedCard = "";
-                document.getElementById('bypass-dir-btn').style.display = "inline-block";
-                document.getElementById('next-bord-btn').style.display = "none";
+                document.getElementById('bypass-dir-btn').style.display = "inline-block"; document.getElementById('next-bord-btn').style.display = "none";
                 historyList.innerHTML = '<li style="color: #666; text-align: center;">Henüz seans başlatılmadı</li>';
                 const btn = document.getElementById('save-sheets-btn'); btn.setAttribute('disabled', 'true'); btn.style.background = "#333"; btn.style.color = "#777"; btn.innerText = "📥 Bordu Google Sheets'e Kaydet";
                 ["N","E","S","W"].forEach(d => { document.getElementById(`dir-box-${d}`).className = "direction-box"; });
@@ -316,22 +284,9 @@ v8.31: Operatörün arka kamerayı kendine dönük kullanırken telefonun aşır
             });
         }
 
-        function pushToDiagnosticsBuffer(patternStr) {
-            const now = Date.now(); diagnosticsBuffer.push({ pattern: patternStr, timestamp: now });
-            if (now - lastConsoleLogTime > 500) { processAndLogToConsole(now); lastConsoleLogTime = now; }
-        }
-
-        function processAndLogToConsole(now) {
-            diagnosticsBuffer = diagnosticsBuffer.filter(item => (now - item.timestamp) < 5000); if (diagnosticsBuffer.length === 0) return;
-            const counts = {}; diagnosticsBuffer.forEach(item => { counts[item.pattern] = (counts[item.pattern] || 0) + 1; });
-            const sorted = Object.keys(counts).sort((a, b) => counts[b] - counts[a]).slice(0, 4);
-            const currentSnapshot = sorted.map(pat => `${pat}:${counts[pat]}`).join("|");
-            if (currentSnapshot === lastLoggedSnapshot) return; lastLoggedSnapshot = currentSnapshot;
-            console.clear(); console.log("%c[v8.31 SABİT PANEL] - SON 5 SANİYE FREKANS RAPORU", "color: #00ffcc; font-weight: bold; font-size: 12px;"); console.log("--------------------------------------------------");
-            sorted.forEach((pat, idx) => { const len = pat.split("-").length; console.log(`${idx + 1}. [${len} Harf] Kod: ${pat} -> %cFrekans: ${counts[pat]}`, "color: #ff9900; font-weight: bold;"); }); console.log("--------------------------------------------------");
-        }
-
-        function clearConsoleLog() { diagnosticsBuffer = []; lastLoggedSnapshot = ""; console.clear(); console.log("%cKonsol Sabit Paneli Sıfırlandı.", "color: #ff9900; font-weight: bold;"); }
+        function pushToDiagnosticsBuffer(patternStr) { const now = Date.now(); diagnosticsBuffer.push({ pattern: patternStr, timestamp: now }); if (now - lastConsoleLogTime > 500) { processAndLogToConsole(now); lastConsoleLogTime = now; } }
+        function processAndLogToConsole(now) { diagnosticsBuffer = diagnosticsBuffer.filter(item => (now - item.timestamp) < 5000); if (diagnosticsBuffer.length === 0) return; const counts = {}; diagnosticsBuffer.forEach(item => { counts[item.pattern] = (counts[item.pattern] || 0) + 1; }); const sorted = Object.keys(counts).sort((a, b) => counts[b] - counts[a]).slice(0, 4); const currentSnapshot = sorted.map(pat => `${pat}:${counts[pat]}`).join("|"); if (currentSnapshot === lastLoggedSnapshot) return; lastLoggedSnapshot = currentSnapshot; console.clear(); console.log("%c[v8.32 FREKANS RAPORU]", "color: #00ffcc; font-weight: bold;"); sorted.forEach((pat, idx) => { console.log(`${idx + 1}. Kod: ${pat} -> %cFrekans: ${counts[pat]}`, "color: #ff9900; font-weight: bold;"); }); }
+        function clearConsoleLog() { diagnosticsBuffer = []; lastLoggedSnapshot = ""; console.clear(); }
         function togglePatterns() { const isChecked = document.getElementById('show-patterns-check').checked; const patterns = historyList.querySelectorAll('.pattern'); patterns.forEach(p => { if (isChecked) { p.classList.remove('pattern-hidden'); } else { p.classList.add('pattern-hidden'); } }); }
         function toggleRawData() { const isChecked = document.getElementById('show-raw-check').checked; const rawDataBox = document.getElementById('raw-data'); if (isChecked) { rawDataBox.classList.remove('raw-hidden'); } else { rawDataBox.classList.add('raw-hidden'); } }
 
@@ -370,12 +325,12 @@ v8.31: Operatörün arka kamerayı kendine dönük kullanırken telefonun aşır
                     try {
                         const basicStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
                         handleStream(basicStream, "Kamera Başı");
-                    } catch (ex) { statusText.innerText = "Kamera Hatası: " + ex.message; }
+                    } catch (ex) { if (statusText) statusText.innerText = "Kamera Hatası: " + ex.message; }
                 }
             }
         }
 
-        function handleStream(stream, statusMsg) { currentStream = stream; video.srcObject = stream; statusText.innerText = statusMsg; requestAnimationFrame(processFrame); }
+        function handleStream(stream, statusMsg) { currentStream = stream; video.srcObject = stream; if (statusText) statusText.innerText = statusMsg; requestAnimationFrame(processFrame); }
         function switchCamera() { currentFacingMode = (currentFacingMode === "environment") ? "user" : "environment"; startCamera(); }
 
         function processFrame() {
@@ -426,12 +381,9 @@ v8.31: Operatörün arka kamerayı kendine dönük kullanırken telefonun aşır
             requestAnimationFrame(processFrame);
         }
 
-        function resetScannerPanel() { matchCount = Math.max(0, matchCount - 1); if (matchCount === 0) { cardNameText.innerText = "KART BEKLENİYOR..."; cardNameText.style.color = "#888"; patternCodeText.innerText = "-"; lastLoggedCard = ""; } }
+        function resetScannerPanel() { matchCount = Math.max(0, matchCount - 1); if (matchCount === 0) { if (cardNameText) cardNameText.innerText = "KART BEKLENİYOR..."; if (cardNameText) cardNameText.style.color = "#888"; if (patternCodeText) patternCodeText.innerText = "-"; lastLoggedCard = ""; } }
         function parseBarPattern(binaryStr) { if (!binaryStr) return ""; let result = []; let currentBit = binaryStr; let count = 1; for (let i = 1; i < binaryStr.length; i++) { if (binaryStr[i] === currentBit) { count++; } else { const type = (currentBit === "0") ? "B" : "W"; if (count > 2) result.push(`${type}${count}`); currentBit = binaryStr[i]; count = 1; } } return result.slice(1, -1).join("-"); }
 
-        // ===================================================================
-        // 🛡️ v8.31 DOM GÜVENLİK KİLİDİ
-        // ===================================================================
         window.addEventListener('DOMContentLoaded', () => {
             video = document.getElementById('webcam'); canvas = document.getElementById('hidden-canvas'); ctx = canvas.getContext('2d');
             debugCanvas = document.getElementById('debug-canvas'); dctx = debugCanvas.getContext('2d');
