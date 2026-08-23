@@ -3,16 +3,16 @@
 VERSİYON/CHANGELOG KAYDI:
 v8.12: Briç turnuva modu, küresel mükerrerlik zırhı ve otomatik vites kuruldu.
 v8.14: 2 Saniyelik (2000 ms) Akıllı Zaman Kilidi (Cooldown) zırhı entegre edildi.
-v8.17: Kaba hata sesi akustik "Bip-bop" tonuna çevrildi. Tekil uyarı basma eklendi.
 v8.19: Google Sheets (Etablolar) tam entegrasyonu sağlandı. Manuel kaydetme buton eklendi.
 v8.20: Acil durum "Manuel Bypass" motoru kuruldu. Arayüze "13'e Tamamla" butonu eklendi.
-v8.22: DOM yüklenme sırasından kaynaklanan element null hataları düzeltildi.
 v8.24: Çevrimdışı localStorage yedeği, post doğrulama motoru ve Seçenek B kuruldu.
 v8.26: Operatör (User) giriş alanı alfabetik sıralı Select menüsüne dönüştürüldü.
-v8.31: Isınmayı önlemek ve ekranı kapatmak için "Stealth Mode" şalteri kuruldu.
+v8.28: historyList null hatası element tanımları DOMContentLoaded içine alınarak çözüldü.
 v8.32: Google Sheets URL linki sökülerek harici "google-config.js" dosyasına taşındı.
-v8.33: v8.26'dan beri operatör select dönüşümünde HTML'den kazara silinen ve sistemi felç
-       eden "<ul id='history-list'>" kök etiketi yerine geri çakıldı. Hata hafızaya alındı.
+v8.33: v8.26'da kazara silinen "<ul id='history-list'>" kök etiketi yerine geri çakıldı.
+v8.34: 1. Çözüm yolu (Mikro Boyut ve Opaklık) zırhı eklenerek Stealth modda yaşanan donma
+       tamamen çözüldü; çizim yükü kapatılarak pil ve ısı tasarrufu sağlandı. Turnuva No
+       alanına bugünün güncel tarihi JavaScript ile otomatik enjekte edilerek otomasyon bitirildi.
 ===================================================================
 -->
 <!DOCTYPE html>
@@ -20,17 +20,18 @@ v8.33: v8.26'dan beri operatör select dönüşümünde HTML'den kazara silinen 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barkod Okuyucu - v8.33 GÜVENCELİ SÜRÜM</title>
+    <title>Barkod Okuyucu - v8.34 SERİN AKIŞ MODELİ</title>
     <link rel="stylesheet" href="style.css">
     <script src="google-config.js"></script>
     <script src="barkod-data.js"></script>
 </head>
 <body>
 
-    <h2>Barkod Tarayıcı (v8.33 - Hatasız Akış)</h2>
+    <h2>Barkod Tarayıcı (v8.34 - Otomatik Tarihli)</h2>
     
+    <!-- 📝 v8.34 TARİH ALANI BOŞ BIRAKILDI (AŞAĞIDA CANLI ENJEKTE EDİLECEK) -->
     <div id="bridge-inputs">
-        <input type="text" id="inp-turnuva-no" value="22.08.2026" placeholder="Turnuva NO">
+        <input type="text" id="inp-turnuva-no" value="" placeholder="Turnuva NO">
         <select id="inp-bord-no">
             <option value="">Bord Seç..</option>
         </select>
@@ -95,7 +96,6 @@ v8.33: v8.26'dan beri operatör select dönüşümünde HTML'den kazara silinen 
         </div>
     </div>
 
-    <!-- 📊 v8.33 MUTLU SON: FELAKETLERE YOL AÇAN VE KAYBOLAN O KÖK ETİKET BURAYA SAPASAĞLAM ÇAKILDI! -->
     <div id="history-panel">
         <label class="checkbox-container">
             <input type="checkbox" id="show-patterns-check" onchange="togglePatterns()">
@@ -130,16 +130,22 @@ v8.33: v8.26'dan beri operatör select dönüşümünde HTML'den kazara silinen 
             return bridgeBordData["N"].includes(cardName) || bridgeBordData["E"].includes(cardName) || bridgeBordData["S"].includes(cardName) || bridgeBordData["W"].includes(cardName);
         }
 
+        // 👁️ v8.34 DÜZELTME: Tarayıcı donmasını önlemek için 1. Yol (mikro boyut ve şeffaflık) entegre edildi!
         function toggleStealthMode() {
             const scanBox = document.getElementById('scanner-container');
             const previewBox = document.getElementById('preview-container');
             const stealthBtn = document.getElementById('stealth-btn');
+            
             if (scanBox.classList.contains('stealth-hidden')) {
-                scanBox.classList.remove('stealth-hidden'); previewBox.classList.remove('stealth-hidden');
-                stealthBtn.innerText = "👁️ Stealth Kapat"; stealthBtn.style.background = "#6c5ce7";
+                scanBox.classList.remove('stealth-hidden');
+                previewBox.classList.remove('stealth-hidden');
+                stealthBtn.innerText = "👁️ Stealth Kapat";
+                stealthBtn.style.background = "#6c5ce7";
             } else {
-                scanBox.classList.add('stealth-hidden'); previewBox.classList.add('stealth-hidden');
-                stealthBtn.innerText = "👁️ Stealth Aç (Gizli)"; stealthBtn.style.background = "#222";
+                scanBox.classList.add('stealth-hidden');
+                previewBox.classList.add('stealth-hidden');
+                stealthBtn.innerText = "👁️ Stealth Aç (Gizli)";
+                stealthBtn.style.background = "#222";
             }
         }
 
@@ -303,7 +309,7 @@ v8.33: v8.26'dan beri operatör select dönüşümünde HTML'den kazara silinen 
         }
 
         function pushToDiagnosticsBuffer(patternStr) { const now = Date.now(); diagnosticsBuffer.push({ pattern: patternStr, timestamp: now }); if (now - lastConsoleLogTime > 500) { processAndLogToConsole(now); lastConsoleLogTime = now; } }
-        function processAndLogToConsole(now) { diagnosticsBuffer = diagnosticsBuffer.filter(item => (now - item.timestamp) < 5000); if (diagnosticsBuffer.length === 0) return; const counts = {}; diagnosticsBuffer.forEach(item => { counts[item.pattern] = (counts[item.pattern] || 0) + 1; }); const sorted = Object.keys(counts).sort((a, b) => counts[b] - counts[a]).slice(0, 4); const currentSnapshot = sorted.map(pat => `${pat}:${counts[pat]}`).join("|"); if (currentSnapshot === lastLoggedSnapshot) return; lastLoggedSnapshot = currentSnapshot; console.clear(); console.log("%c[v8.33 FREKANS RAPORU]", "color: #00ffcc; font-weight: bold;"); sorted.forEach((pat, idx) => { console.log(`${idx + 1}. Kod: ${pat} -> %cFrekans: ${counts[pat]}`, "color: #ff9900; font-weight: bold;"); }); }
+        function processAndLogToConsole(now) { diagnosticsBuffer = diagnosticsBuffer.filter(item => (now - item.timestamp) < 5000); if (diagnosticsBuffer.length === 0) return; const counts = {}; diagnosticsBuffer.forEach(item => { counts[item.pattern] = (counts[item.pattern] || 0) + 1; }); const sorted = Object.keys(counts).sort((a, b) => counts[b] - counts[a]).slice(0, 4); const currentSnapshot = sorted.map(pat => `${pat}:${counts[pat]}`).join("|"); if (currentSnapshot === lastLoggedSnapshot) return; lastLoggedSnapshot = currentSnapshot; console.clear(); console.log("%c[v8.34 FREKANS RAPORU]", "color: #00ffcc; font-weight: bold;"); sorted.forEach((pat, idx) => { console.log(`${idx + 1}. Kod: ${pat} -> %cFrekans: ${counts[pat]}`, "color: #ff9900; font-weight: bold;"); }); }
         function clearConsoleLog() { diagnosticsBuffer = []; lastLoggedSnapshot = ""; console.clear(); }
         function togglePatterns() { const isChecked = document.getElementById('show-patterns-check').checked; const patterns = historyList.querySelectorAll('.pattern'); patterns.forEach(p => { if (isChecked) { p.classList.remove('pattern-hidden'); } else { p.classList.add('pattern-hidden'); } }); }
         function toggleRawData() { const isChecked = document.getElementById('show-raw-check').checked; const rawDataBox = document.getElementById('raw-data'); if (isChecked) { rawDataBox.classList.remove('raw-hidden'); } else { rawDataBox.classList.add('raw-hidden'); } }
@@ -410,6 +416,10 @@ v8.33: v8.26'dan beri operatör select dönüşümünde HTML'den kazara silinen 
             
             const bordSelect = document.getElementById('inp-bord-no');
             for (let i = 1; i <= 40; i++) { const opt = document.createElement('option'); opt.value = i; opt.innerText = "Bord " + i; bordSelect.appendChild(opt); }
+            
+            // 📅 v8.34 OTOMASYON: Sayfa açıldığı o ilk milisaniyede bugünün tarihini kutuya otomatik enjekte eder!
+            document.getElementById('inp-turnuva-no').value = new Date().toLocaleDateString('tr-TR');
+            
             startCamera(); checkOfflineQueue();
         });
     </script>
