@@ -101,7 +101,7 @@ video {
     width: 80%;
     height: 260px; /* Tam 260 piksellik dikey tarama gözü yüksekliği */
     border-top: 2px solid #00ffcc;    /* En üstteki düz turkuaz çizgi aynen korundu */
-    border-bottom: 3px solid #ff3333; /* 🛑 TAM ÇİZDİĞİNİZ NOKTAYA ÇAKILAN KIRMIZI EMİNİYET ŞERİDİ */
+    border-bottom: 3px solid #ff3333 !important; /* 🛑 TAM ÇİZDİĞİNİZ NOKTAYA ÇAKILAN KIRMIZI EMİNİYET ŞERİDİ */
     background: rgba(0, 255, 204, 0.06); /* İçindeki şeffaf mavi fon perdesi */
     pointer-events: none;
 }
