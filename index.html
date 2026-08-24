@@ -1,0 +1,439 @@
+<!-- 
+===================================================================
+VERSİYON/CHANGELOG KAYDI:
+v8.12: Briç turnuva modu, küresel mükerrerlik zırhı ve otomatik vites kuruldu.
+v8.14: 2 Saniyelik (2000 ms) Akıllı Zaman Kilidi (Cooldown) zırhı entegre edildi.
+v8.19: Google Sheets (Etablolar) tam entegrasyonu sağlandı. Manuel kaydetme buton eklendi.
+v8.20: Acil durum "Manuel Bypass" motoru kuruldu. Arayüze "13'e Tamamla" butonu eklendi.
+v8.24: Çevrimdışı localStorage yedeği, post doğrulama motoru ve Seçenek B kuruldu.
+v8.26: Operatör (User) giriş alanı alfabetik sıralı Select menüsüne dönüştürüldü.
+v8.28: historyList null hatası element tanımları DOMContentLoaded içine alınarak çözüldü.
+v8.32: Google Sheets URL linki sökülerek harici "google-config.js" dosyasına taşındı.
+v8.33: v8.26'da kazara silinen "<ul id='history-list'>" kök etiketi yerine geri çakıldı.
+v8.34: 1. Çözüm yolu (Mikro Boyut ve Opaklık) zırhı eklenerek Stealth mod donması çözüldü.
+v8.35: Operatörün talebi uyarınca, mükerrer kartların alt satıra geçmesini önleyen ve yan yana 
+       virgülle akıtan [MÜK] cüce formatı kuruldu. Tarihçe kutusunun hemen altına telefonun anlık 
+       performansını ölçen Canlı Teşhis Paneli (Canlı FPS, Çözünürlük, Turkuaz Alan En-Boy Ölçüsü) 
+       entegre edildi. Turnuva No kutusuna otomatik güncel tarih otomasyonu mühürlendi.
+===================================================================
+-->
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barkod Okuyucu - v8.35 PANELLİ MODEL</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="google-config.js"></script>
+    <script src="barkod-data.js"></script>
+</head>
+<body>
+
+    <h2>Barkod Tarayıcı (v8.35 - Teşhis Panelli)</h2>
+    
+    <div id="bridge-inputs">
+        <input type="text" id="inp-turnuva-no" value="" placeholder="Turnuva NO">
+        <select id="inp-bord-no">
+            <option value="">Bord Seç..</option>
+        </select>
+        <select id="inp-user">
+            <option value="">Operatör..</option>
+            <option value="AKIN">AKIN</option>
+            <option value="AYTE">AYTE</option>
+            <option value="CEM">CEM</option>
+            <option value="HULU">HULU</option>
+            <option value="İSMA">İSMA</option>
+            <option value="JOK1">JOK1</option>
+            <option value="JOK2">JOK2</option>
+            <option value="MAHM">MAHM</option>
+            <option value="SÜLE">SÜLE</option>
+            <option value="TANJ">TANJ</option>
+        </select>
+    </div>
+
+    <div id="bridge-dashboard">
+        <div id="dir-box-N" class="direction-box active-dir">KUZEY (N)<br><span id="count-N">0</span> / 13</div>
+        <div id="dir-box-E" class="direction-box">DOĞU (E)<br><span id="count-E">0</span> / 13</div>
+        <div id="dir-box-S" class="direction-box">GÜNEY (S)<br><span id="count-S">0</span> / 13</div>
+        <div id="dir-box-W" class="direction-box">BATI (W)<br><span id="count-W">0</span> / 13</div>
+    </div>
+
+    <div id="scanner-container">
+        <video id="webcam" autoplay playsinline muted></video>
+        <div id="laser-guide"></div>
+    </div>
+    
+    <div id="preview-container">
+        <canvas id="debug-canvas"></canvas>
+    </div>
+
+    <div class="btn-group">
+        <button id="switch-camera-btn" class="action-btn" onclick="switchCamera()">Kamera</button>
+        <button id="stealth-btn" class="action-btn" onclick="toggleStealthMode()">👁️ Stealth Kapat</button>
+        <button id="clear-history-btn" class="action-btn" onclick="clearHistory()">Sıfırla</button>
+        <button id="clear-console-btn" class="action-btn" onclick="clearConsoleLog()">Konsol</button>
+        <button id="view-database-btn" class="action-btn" onclick="toggleDatabaseView()">Sözlük</button>
+        <button id="bypass-dir-btn" class="action-btn" onclick="bypassCurrentDirectionTo13()">⏩ 13'e Tamamla</button>
+    </div>
+
+    <div class="btn-group">
+        <button id="save-sheets-btn" class="action-btn" onclick="saveDataToGoogleSheets()" disabled>📥 Bordu Google Sheets'e Kaydet</button>
+        <button id="next-bord-btn" class="action-btn" onclick="advanceToNextBord()">⏭️ Sonraki Borda Geç / Ekranı Temizle</button>
+    </div>
+
+    <canvas id="hidden-canvas" style="display:none;"></canvas>
+
+    <div id="result-panel">
+        <div class="info-row"><strong>Durum:</strong> <span id="status" style="color: yellow;">Kamera başlatılıyor...</span></div>
+        <div class="info-row"><strong>Aktif Yön:</strong> <span id="active-direction-lbl" style="color: #ff9900; font-weight: bold;">KUZEY (N) TARANIYOR</span></div>
+        <div class="info-row"><strong>Kart:</strong> <span id="card-name" style="color: #00ffcc; font-weight: bold; font-size: 1.2em;">KART BEKLENİYOR...</span></div>
+        <div class="info-row"><strong>Örüntü:</strong> <span id="pattern-code" style="color: #00ff00; font-weight: bold;">-</span></div>
+        <div class="info-row">
+            <strong>Ham Model:</strong> 
+            <label style="font-size: 0.85em; color: #ff9900; margin-left: 8px; cursor: pointer;">
+                <input type="checkbox" id="show-raw-check" onchange="toggleRawData()"> Göster
+            </label>
+            <span id="raw-data" class="binary-output raw-hidden">-</span>
+        </div>
+    </div>
+
+    <div id="history-panel">
+        <label class="checkbox-container">
+            <input type="checkbox" id="show-patterns-check" onchange="togglePatterns()">
+            Örüntü Kodlarını Göster ()
+        </label>
+        <strong>Deste Genelinde Okunan Kartlar Raporu:</strong>
+        <ul id="history-list">
+            <li style="color: #666; text-align: center;">Henüz seans başlatılmadı</li>
+        </ul>
+    </div>
+
+    <!-- 📉 v8.35: CANLI DIAGNOSTICS (TEŞHİS) PANELİ YUVASI -->
+    <div id="diagnostics-panel">
+        <div>FPS: <span id="diag-fps" class="diag-val">0</span></div>
+        <div>Çözünürlük: <span id="diag-res" class="diag-val">0x0</span></div>
+        <div>Tarama Alanı: <span id="diag-area" class="diag-val">0x0 px</span></div>
+    </div>
+
+    <div id="database-view-panel">
+        <div id="db-panel-header">
+            <strong style="color: #00ffcc; font-size: 1.0em;">Canlı Sözlük Hafızası</strong>
+            <button class="action-btn" style="background:#cc3333; color:white; padding:4px 10px;" onclick="toggleDatabaseView()">Kapat X</button>
+        </div>
+        <div id="database-view-list"></div>
+    </div>
+
+    <script>
+        let video, canvas, ctx, debugCanvas, dctx;
+        let statusText, cardNameText, patternCodeText, rawDataText, historyList, activeDirLbl;
+
+        let lockedPattern = "-"; let matchCount = 0; const REQUIRED_MATCHES = 3; 
+        let currentFacingMode = "environment"; let currentStream = null; let lastLoggedCard = ""; let audioCtx = null;
+        let diagnosticsBuffer = []; let lastConsoleLogTime = 0; let lastLoggedSnapshot = ""; 
+
+        // v8.35: Canlı FPS Teşhis Sayaçları
+        let lastFpsUpdateTime = 0; let frameCount = 0;
+
+        let bridgeBordData = { "N": [], "E": [], "S": [], "W": [] };
+        let currentDirection = "N"; let currentDirectionHeaderAdded = false; let lastReadTime = 0; let lastErrorCard = ""; 
+
+        function isCardAlreadyReadAnywhere(cardName) {
+            return bridgeBordData["N"].includes(cardName) || bridgeBordData["E"].includes(cardName) || bridgeBordData["S"].includes(cardName) || bridgeBordData["W"].includes(cardName);
+        }
+
+        function toggleStealthMode() {
+            const scanBox = document.getElementById('scanner-container'); const previewBox = document.getElementById('preview-container'); const stealthBtn = document.getElementById('stealth-btn');
+            if (scanBox.classList.contains('stealth-hidden')) {
+                scanBox.classList.remove('stealth-hidden'); previewBox.classList.remove('stealth-hidden');
+                stealthBtn.innerText = "👁️ Stealth Kapat"; stealthBtn.style.background = "#6c5ce7";
+            } else {
+                scanBox.classList.add('stealth-hidden'); previewBox.classList.add('stealth-hidden');
+                stealthBtn.innerText = "👁️ Stealth Aç (Gizli)"; stealthBtn.style.background = "#222";
+            }
+        }
+
+        function bypassCurrentDirectionTo13() {
+            if (currentDirection === "DONE") return;
+            const currentCount = bridgeBordData[currentDirection].length; const missingCount = 13 - currentCount; if (missingCount <= 0) return;
+            if (confirm(`${currentDirection} yönünde eksik kalan ${missingCount} kart sanal 'X' koduyla kapatılsın mı?`)) {
+                if (!currentDirectionHeaderAdded) {
+                    const dirNamesTr = { "N": "KUZEY (NORTH)", "E": "DOĞU (EAST)", "S": "GÜNEY (SOUTH)", "W": "BATI (WEST)" };
+                    const headerLi = document.createElement('li'); headerLi.style.cssText = "display: block; color: #ff9900; font-weight: bold; margin-top: 8px; margin-bottom: 2px; border-bottom: 1px dashed #444; font-size: 0.9em;";
+                    headerLi.innerText = `--- ${dirNamesTr[currentDirection]} ---`; historyList.prepend(headerLi); currentDirectionHeaderAdded = true;
+                }
+                for (let i = 1; i <= missingCount; i++) {
+                    const virtualCardName = `${currentDirection}X${currentCount + i}`; bridgeBordData[currentDirection].push(virtualCardName);
+                    const li = document.createElement('li'); li.style.cssText = "color: #d1ccc0; font-style: italic;";
+                    li.innerHTML = `<span class="num">${bridgeBordData[currentDirection].length}- </span><span class="card">${virtualCardName}</span>, `; historyList.prepend(li);
+                }
+                playBeep(); updateBridgeUI(); checkAndAdvanceDirection();
+            }
+        }
+
+        function checkAndAdvanceDirection() {
+            if (bridgeBordData[currentDirection].length >= 13) {
+                document.getElementById(`dir-box-${currentDirection}`).className = "direction-box done-dir";
+                if (currentDirection === "N") { currentDirection = "E"; } 
+                else if (currentDirection === "E") { currentDirection = "S"; } 
+                else if (currentDirection === "S") { currentDirection = "W"; } 
+                else if (currentDirection === "W") {
+                    currentDirection = "DONE"; activeDirLbl.innerText = "BORD TAMAMLANDI! (52/52)"; activeDirLbl.style.color = "#00ffcc";
+                    document.getElementById('bypass-dir-btn').style.display = "none";
+                    document.getElementById('save-sheets-btn').removeAttribute('disabled');
+                    document.getElementById('save-sheets-btn').style.background = "#00ffcc"; document.getElementById('save-sheets-btn').style.color = "#111";
+                    alert("52 Kart Tamamlandı! Verileri Google Sheets'e Kaydedebilirsiniz."); return;
+                }
+                document.getElementById(`dir-box-${currentDirection}`).className = "direction-box active-dir";
+                currentDirectionHeaderAdded = false; lastLoggedCard = ""; lastErrorCard = ""; updateBridgeUI();
+            }
+        }
+
+        function updateBridgeUI() {
+            const dirNames = { "N": "KUZEY (N)", "E": "DOĞU (E)", "S": "GÜNEY (S)", "W": "BATI (W)", "DONE": "BORD BİTTİ" };
+            if (currentDirection !== "DONE") { activeDirLbl.innerText = `${dirNames[currentDirection]} TARANIYOR`; activeDirLbl.style.color = "#ff9900"; }
+            document.getElementById('count-N').innerText = bridgeBordData["N"].length; document.getElementById('count-E').innerText = bridgeBordData["E"].length; document.getElementById('count-S').innerText = bridgeBordData["S"].length; document.getElementById('count-W').innerText = bridgeBordData["W"].length;
+        }
+
+        async function saveDataToGoogleSheets() {
+            const btn = document.getElementById('save-sheets-btn');
+            const tNo = document.getElementById('inp-turnuva-no').value.trim(); const bNo = document.getElementById('inp-bord-no').value; const uName = document.getElementById('inp-user').value;
+
+            if (!tNo || !bNo || !uName) { alert("🔴 HATA: Lütfen tüm alanları eksiksiz seçin!"); return; }
+            btn.innerText = "⏳ %100 Canlı Doğrulama Yapılıyor..."; btn.setAttribute('disabled', 'true');
+
+            const curDate = new Date().toLocaleDateString('tr-TR') + " " + new Date().toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'});
+            const payload = {
+                turnuvaNo: tNo, tarih: curDate, bordNo: bNo, north: bridgeBordData["N"].join(","), east: bridgeBordData["E"].join(","), south: bridgeBordData["S"].join(","), west: bridgeBordData["W"].join(","), user: uName
+            };
+
+            const offlineKey = `bridge_backup_${tNo}_${bNo}`; localStorage.setItem(offlineKey, JSON.stringify(payload));
+
+            try {
+                const response = await fetch(GOOGLE_APPS_SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload) });
+                const resJson = await response.json();
+
+                if (resJson.status === "EXISTS") {
+                    btn.innerText = "❌ MÜKERRER BORD ENGELLENDİ"; btn.style.background = "#cc3333"; btn.style.color = "#fff";
+                    alert(`⚠️ ENGELLENDİ: Bu Turnuva ve Bord No daha önce girilmiş!`); btn.removeAttribute('disabled'); return;
+                }
+                if (resJson.status === "SUCCESS") {
+                    localStorage.removeItem(offlineKey);
+                    btn.innerText = "🔒 VERİ %100 DOĞRULANDI VE MÜHÜRLENDİ"; btn.style.background = "#2a7a4a"; btn.style.color = "#fff";
+                    document.getElementById('next-bord-btn').style.display = "block";
+                    alert("Veri Google Sheets'e EKSİKSİZ ve DOĞRULANMIŞ olarak başarıyla işlendi!");
+                }
+            } catch (err) {
+                btn.innerText = "💾 İNTERNET YOK - TELEFONA YEDEKLENDİ"; btn.style.background = "#ff9900"; btn.style.color = "#111";
+                document.getElementById('next-bord-btn').style.display = "block";
+                alert("⚠️ ÇEVRİMDIŞI MOD: Verileriniz telefon hafızasına güvenle yedeklendi. Bir sonraki borda geçebilirsiniz.");
+            }
+        }
+
+        function advanceToNextBord() {
+            const bordSelect = document.getElementById('inp-bord-no'); const currentBordVal = parseInt(bordSelect.value);
+            if (currentBordVal && currentBordVal < 40) { bordSelect.value = currentBordVal + 1; } else { bordSelect.value = ""; }
+            bridgeBordData = { "N": [], "E": [], "S": [], "W": [] };
+            currentDirection = "N"; currentDirectionHeaderAdded = false; lastReadTime = 0; lastErrorCard = ""; lastLoggedCard = "";
+            document.getElementById('bypass-dir-btn').style.display = "inline-block"; document.getElementById('next-bord-btn').style.display = "none";
+            const saveBtn = document.getElementById('save-sheets-btn'); saveBtn.setAttribute('disabled', 'true'); saveBtn.style.background = "#333"; saveBtn.style.color = "#777"; saveBtn.innerText = "📥 Bordu Google Sheets'e Kaydet";
+            historyList.innerHTML = '<li style="color: #666; text-align: center;">Yeni Bord Seansı Başlatıldı. Kart Bekleniyor..</li>';
+            ["N","E","S","W"].forEach(d => { document.getElementById(`dir-box-${d}`).className = "direction-box"; });
+            document.getElementById("dir-box-N").className = "direction-box active-dir"; updateBridgeUI(); checkOfflineQueue();
+        }
+
+        async function checkOfflineQueue() {
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith("bridge_backup_")) {
+                    const rawData = localStorage.getItem(key);
+                    if (rawData) {
+                        try {
+                            const res = await fetch(GOOGLE_APPS_SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: rawData });
+                            const json = await res.json(); if (json.status === "SUCCESS" || json.status === "EXISTS") { localStorage.removeItem(key); }
+                        } catch(e) {}
+                    }
+                }
+            }
+        }
+
+        // v8.35 GÜNCELLEMESİ: Mükerrer kartları alt satıra atmayan, yan yana virgülle akıtan elit düzen
+        function addHistoryItem(cardName, pattern) {
+            if (currentDirection === "DONE") return;
+            const now = Date.now(); if (now - lastReadTime < 2000) { return; }
+
+            if (isCardAlreadyReadAnywhere(cardName)) {
+                if (cardName === lastErrorCard) { return; }
+                lastErrorCard = cardName; if (historyList.querySelector('li[style*="center"]')) { historyList.innerHTML = ""; }
+                
+                // 🎯 v8.35: "display: inline-block" yapıldı, yazısı kısaltıldı ve sonuna virgül çakıldı!
+                const errorLi = document.createElement('li'); 
+                errorLi.style.cssText = "display: inline-block; color: #ff3333; font-weight: bold; margin-right: 5px;";
+                errorLi.innerText = `[MÜK] ${cardName},`; 
+                historyList.prepend(errorLi); playErrorBeep(); return; 
+            }
+
+            if (historyList.querySelector('li[style*="center"]')) { historyList.innerHTML = ""; }
+            if (!currentDirectionHeaderAdded) {
+                const dirNamesTr = { "N": "KUZEY (NORTH)", "E": "DOĞU (EAST)", "S": "GÜNEY (SOUTH)", "W": "BATI (WEST)" };
+                const headerLi = document.createElement('li'); headerLi.style.cssText = "display: block; color: #ff9900; font-weight: bold; margin-top: 8px; margin-bottom: 2px; border-bottom: 1px dashed #444; font-size: 0.9em;";
+                headerLi.innerText = `--- ${dirNamesTr[currentDirection]} ---`; historyList.prepend(headerLi); currentDirectionHeaderAdded = true;
+            }
+
+            bridgeBordData[currentDirection].push(cardName); lastErrorCard = ""; updateBridgeUI();
+            const li = document.createElement('li'); const isChecked = document.getElementById('show-patterns-check').checked; const patternClass = isChecked ? "" : "pattern-hidden";
+            li.innerHTML = `<span class="num">${bridgeBordData[currentDirection].length}- </span><span class="card">${cardName}</span><span class="pattern ${patternClass}">(${pattern})</span><span class="comma">, </span>`;
+            historyList.prepend(li); playBeep(); lastReadTime = now; checkAndAdvanceDirection();
+        }
+
+        function clearHistory() {
+            if(confirm("Tüm seansı sıfırlamak istediğinizden emin misiniz?")) {
+                bridgeBordData = { "N": [], "E": [], "S": [], "W": [] }; currentDirection = "N"; currentDirectionHeaderAdded = false; lastReadTime = 0; lastErrorCard = ""; lastLoggedCard = "";
+                document.getElementById('bypass-dir-btn').style.display = "inline-block"; document.getElementById('next-bord-btn').style.display = "none";
+                historyList.innerHTML = '<li style="color: #666; text-align: center;">Henüz seans başlatılmadı</li>';
+                const btn = document.getElementById('save-sheets-btn'); btn.setAttribute('disabled', 'true'); btn.style.background = "#333"; btn.style.color = "#777"; btn.innerText = "📥 Bordu Google Sheets'e Kaydet";
+                ["N","E","S","W"].forEach(d => { document.getElementById(`dir-box-${d}`).className = "direction-box"; });
+                document.getElementById("dir-box-N").className = "direction-box active-dir"; updateBridgeUI();
+            }
+        }
+
+        function toggleDatabaseView() {
+            const dbPanel = document.getElementById('database-view-panel'); const dbList = document.getElementById('database-view-list');
+            if (dbPanel.style.display === 'block') { dbPanel.style.display = 'none'; return; }
+            dbPanel.style.display = 'block'; dbList.innerHTML = "";
+            if (typeof JANNERSTEN_DECK_MAP === 'undefined' || Object.keys(JANNERSTEN_DECK_MAP).length === 0) { dbList.innerHTML = '<div style="color: #666; padding:10px;">Sözlük boş!</div>'; return; }
+            const groups = { "♣️ SİNEK (CLUBS)": [], "♦️ KARO (DIAMONDS)": [], "♥️ KUPA (HEARTS)": [], "♠️ MAÇA (SPADES)": [], "❓ DİĞER": [] };
+            Object.keys(JANNERSTEN_DECK_MAP).forEach(pattern => {
+                const cardName = JANNERSTEN_DECK_MAP[pattern]; const len = pattern.split("-").length;
+                const itemHtml = `<div><span style="color:#00ffcc; font-weight:bold;">${cardName}</span> <small style="color:#ff9900;">[${len}H]</small>: <span style="color:#eee;">${pattern}</span></div>`;
+                if (cardName.startsWith("C")) groups["♣️ SİNEK (CLUBS)"].push(itemHtml); else if (cardName.startsWith("D")) groups["♦️ KARO (DIAMONDS)"].push(itemHtml); else if (cardName.startsWith("H")) groups["♥️ KUPA (HEARTS)"].push(itemHtml); else if (cardName.startsWith("S")) groups["♠️ MAÇA (SPADES)"].push(itemHtml); else groups["❓ DİĞER"].push(itemHtml);
+            });
+            Object.keys(groups).forEach(groupName => {
+                if (groups[groupName].length > 0) {
+                    const header = document.createElement('div'); header.style.cssText = "color: #ff9900; font-weight: bold; margin-top: 12px; border-bottom: 1px solid #444; padding-bottom: 3px; font-size: 0.95em;";
+                    header.innerText = groupName; dbList.appendChild(header);
+                    groups[groupName].forEach(html => { const row = document.createElement('div'); row.style.cssText = "padding: 5px 0; border-bottom: 1px solid #222; word-break: break-all;"; row.innerHTML = html; dbList.appendChild(row); });
+                }
+            });
+        }
+        function pushToDiagnosticsBuffer(patternStr) { const now = Date.now(); diagnosticsBuffer.push({ pattern: patternStr, timestamp: now }); }
+        function clearConsoleLog() { diagnosticsBuffer = []; lastLoggedSnapshot = ""; console.clear(); }
+        function togglePatterns() { const isChecked = document.getElementById('show-patterns-check').checked; const patterns = historyList.querySelectorAll('.pattern'); patterns.forEach(p => { if (isChecked) { p.classList.remove('pattern-hidden'); } else { p.classList.add('pattern-hidden'); } }); }
+        function toggleRawData() { const isChecked = document.getElementById('show-raw-check').checked; const rawDataBox = document.getElementById('raw-data'); if (isChecked) { rawDataBox.classList.remove('raw-hidden'); } else { rawDataBox.classList.add('raw-hidden'); } }
+
+        function playBeep() {
+            try {
+                if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+                if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                osc.type = 'sine'; osc.frequency.setValueAtTime(950, audioCtx.currentTime); gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.18);
+            } catch (e) { console.log("Ses hatası: ", e); }
+        }
+
+        function playErrorBeep() {
+            try {
+                if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+                if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                osc.type = 'sine'; osc.frequency.setValueAtTime(600, audioCtx.currentTime); osc.frequency.setValueAtTime(450, audioCtx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.35, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.28);
+                osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.28);
+            } catch (e) { console.log("Ses hatası: ", e); }
+        }
+
+        async function startCamera() {
+            if (currentStream) { currentStream.getTracks().forEach(track => track.stop()); }
+            try {
+                const constraints = { video: { facingMode: { exact: currentFacingMode } }, audio: false };
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                handleStream(stream, `Tarama Aktif (${currentFacingMode === "environment" ? "Arka" : "Ön"} Kamera)`);
+            } catch (err) {
+                try {
+                    const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode }, audio: false });
+                    handleStream(fallbackStream, `Tarama Aktif (${currentFacingMode === "environment" ? "Arka" : "Ön"} Alternatif)`);
+                } catch (e) {
+                    try {
+                        const basicStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                        handleStream(basicStream, "Kamera Başı");
+                    } catch (ex) { if (statusText) statusText.innerText = "Kamera Hatası: " + ex.message; }
+                }
+            }
+        }
+
+        function handleStream(stream, statusMsg) { currentStream = stream; video.srcObject = stream; if (statusText) statusText.innerText = statusMsg; requestAnimationFrame(processFrame); }
+        function switchCamera() { currentFacingMode = (currentFacingMode === "environment") ? "user" : "environment"; startCamera(); }
+
+        function processFrame() {
+            if (video && video.readyState === video.HAVE_ENOUGH_DATA) {
+                frameCount++; const nowFps = Date.now();
+                if (nowFps - lastFpsUpdateTime >= 1000) {
+                    const currentFps = Math.round((frameCount * 1000) / (nowFps - lastFpsUpdateTime));
+                    document.getElementById('diag-fps').innerText = currentFps;
+                    frameCount = 0; lastFpsUpdateTime = nowFps;
+                    document.getElementById('diag-res').innerText = `${video.videoWidth}x${video.videoHeight}`;
+                    const calcLength = Math.floor(video.videoWidth * 0.7);
+                    document.getElementById('diag-area').innerText = `${calcLength}x260`;
+                }
+
+                canvas.width = video.videoWidth; canvas.height = video.videoHeight; ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const startX = Math.floor(canvas.width * 0.15); const scanLength = Math.floor(canvas.width * 0.7); const startY = 0; const scanHeight = 260;
+                const imgData = ctx.getImageData(startX, startY, scanLength, scanHeight); const pixels = imgData.data; let validPatternFound = false;
+                debugCanvas.width = scanLength; debugCanvas.height = 1; dctx.clearRect(0, 0, debugCanvas.width, debugCanvas.height);
+
+                for (let y = 0; y < scanHeight; y += 3) {
+                    const rowOffset = y * scanLength * 4; let rowBrightnesses = new Array(scanLength); let minB = 255; let maxB = 0;
+                    for (let x = 0; x < scanLength; x++) { const i = rowOffset + (x * 4); const b = 0.299 * pixels[i] + 0.587 * pixels[i+1] + 0.114 * pixels[i+2]; rowBrightnesses[x] = b; if (b < minB) minB = b; if (b > maxB) maxB = b; }
+                    let dynamicThreshold = (minB + maxB) / 2; if ((maxB - minB) < 30) continue;
+                    let binaryString = ""; let debugImgData = dctx.createImageData(scanLength, 1);
+
+                    for (let x = 0; x < scanLength; x++) {
+                        const isWhite = rowBrightnesses[x] > dynamicThreshold; binaryString += isWhite ? "1" : "0"; const idx = x * 4;
+                        if (isWhite) { debugImgData.data[idx] = 255; debugImgData.data[idx+1] = 255; debugImgData.data[idx+2] = 255; } 
+                        else { debugImgData.data[idx] = 255; debugImgData.data[idx+1] = 0; debugImgData.data[idx+2] = 0; }
+                        debugImgData.data[idx+3] = 255;     
+                    }
+
+                    const realCompressed = parseBarPattern(binaryString);
+                    if (realCompressed.length > 3) {
+                        const parts = realCompressed.split("-").filter(p => { const val = parseInt(p.substring(1)); return val >= 2 && val <= 35; });
+                        let targetSequence = null;
+                        if (parts.length >= 13) { targetSequence = parts.slice(-13); } else if (parts.length >= 11) { targetSequence = parts.slice(-11); } else if (parts.length >= 9) { targetSequence = parts.slice(-9); } else if (parts.length >= 7) { targetSequence = parts.slice(-7); } 
+
+                        if (targetSequence) {
+                            const blacks = targetSequence.filter(p => p.startsWith("B")).map(p => parseInt(p.substring(1))); const whites = targetSequence.filter(p => p.startsWith("W")).map(p => parseInt(p.substring(1)));
+                            if (blacks.length >= 3) {
+                                const avgWhite = whites.reduce((a, b) => a + b, 0) / whites.length;
+                                const pattern = targetSequence.map(p => { const val = parseInt(p.substring(1)); if (p.startsWith("B")) { return (val > 7) ? "K" : "I"; } else { return (val > avgWhite) ? "G" : "D"; } }).join("-");
+                                pushToDiagnosticsBuffer(pattern); dctx.putImageData(debugImgData, 0, 0);
+                                const isDefined = (typeof JANNERSTEN_DECK_MAP !== 'undefined' && JANNERSTEN_DECK_MAP[pattern]);
+                                if (isDefined || !validPatternFound) {
+                                    rawDataText.innerText = realCompressed; const cardFound = isDefined ? JANNERSTEN_DECK_MAP[pattern] : "TANIMSIZ: " + pattern;
+                                    if (pattern === lockedPattern) { matchCount++; } else { lockedPattern = pattern; matchCount = 1; }
+                                    if (matchCount >= REQUIRED_MATCHES) { cardNameText.innerText = cardFound; cardNameText.style.color = isDefined ? "#00ffff" : "#ff9900"; patternCodeText.innerText = lockedPattern; if (isDefined) { addHistoryItem(cardFound, lockedPattern); } }
+                                    validPatternFound = true;
+                                }
+                            }
+                        }
+                    }
+                }
+                if (!validPatternFound) { resetScannerPanel(); }
+            }
+            requestAnimationFrame(processFrame);
+        }
+
+        function resetScannerPanel() { matchCount = Math.max(0, matchCount - 1); if (matchCount === 0) { if (cardNameText) cardNameText.innerText = "KART BEKLENİYOR..."; if (cardNameText) cardNameText.style.color = "#888"; if (patternCodeText) patternCodeText.innerText = "-"; lastLoggedCard = ""; } }
+        function parseBarPattern(binaryStr) { if (!binaryStr) return ""; let result = []; let currentBit = binaryStr; let count = 1; for (let i = 1; i < binaryStr.length; i++) { if (binaryStr[i] === currentBit) { count++; } else { const type = (currentBit === "0") ? "B" : "W"; if (count > 2) result.push(`${type}${count}`); currentBit = binaryStr[i]; count = 1; } } return result.slice(1, -1).join("-"); }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            video = document.getElementById('webcam'); canvas = document.getElementById('hidden-canvas'); ctx = canvas.getContext('2d');
+            debugCanvas = document.getElementById('debug-canvas'); dctx = debugCanvas.getContext('2d');
+            statusText = document.getElementById('status'); cardNameText = document.getElementById('card-name'); patternCodeText = document.getElementById('pattern-code');
+            rawDataText = document.getElementById('raw-data'); historyList = document.getElementById('history-list'); activeDirLbl = document.getElementById('active-direction-lbl');
+            const bordSelect = document.getElementById('inp-bord-no');
+            for (let i = 1; i <= 40; i++) { const opt = document.createElement('option'); opt.value = i; opt.innerText = "Bord " + i; bordSelect.appendChild(opt); }
+            document.getElementById('inp-turnuva-no').value = new Date().toLocaleDateString('tr-TR');
+            startCamera(); checkOfflineQueue();
+        });
+    </script>
+</body>
+</html>
