@@ -236,7 +236,7 @@ video {
     display: flex;
     justify-content: space-between;
     font-family: monospace;
-    font-size: 1.1em; /* 🔍 İŞTE DEĞİŞTİRECEĞİNİZ YER BURASI! 0.78em*/
+    font-size: 1.8em; /* 🔍 İŞTE DEĞİŞTİRECEĞİNİZ YER BURASI! 0.78em*/
     color: #888;
     box-sizing: border-box;
 }
