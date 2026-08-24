@@ -6,6 +6,9 @@ v8.10: Cep telefonları için yüzen Pop-up "Veritabanı" panel stilleri eklendi
 v8.34.1: "object-fit: cover" ve dikey kesme zırhı ile telefon uzama/ısınma bug'ı çözüldü.
 v8.35: Mükerrer kart uyarısının yan yana virgülle akmasını sağlayan .muk-inline sınıfı kuruldu.
        Tarihçenin en altına gözü yormayan, gri renkli mini Canlı Teşhes Paneli stilleri enjekte edildi.
+       [KIRMIZI SINIR GÜNCELLEMESİ]: Operatörün ekran görüntüsü çizimi uyarınca, esneyen eski kesikli 
+       mavi alt çizgi kaldırıldı. Yerine tam 260. piksel dikey tarama sınırını bıçak gibi mühürleyen 
+       3px kalınlığında düz net bir KIRMIZI EMNİYET ŞERİDİ (border-bottom) çakıldı.
 ===================================================================
 */
 
@@ -89,18 +92,20 @@ video {
     display: block;
     object-fit: cover;
 }
+
+/* 🎯 TURKUAZ TARAMA ALANI VE V8.35 KIRMIZI EMNİYET ŞERİDİ */
 #laser-guide {
     position: absolute;
     top: 0;
     left: 10%;
     width: 80%;
-    height: 260px;
-    border-top: 2px solid #00ffcc;
-    border-bottom: 2px dashed #00ffcc;
-    background: rgba(0, 255, 204, 0.08);
-    box-shadow: 0 0 15px rgba(0, 255, 204, 0.35);
+    height: 260px; /* Tam 260 piksellik dikey tarama gözü yüksekliği */
+    border-top: 2px solid #00ffcc;    /* En üstteki düz turkuaz çizgi aynen korundu */
+    border-bottom: 3px solid #ff3333; /* 🛑 TAM ÇİZDİĞİNİZ NOKTAYA ÇAKILAN KIRMIZI EMİNİYET ŞERİDİ */
+    background: rgba(0, 255, 204, 0.06); /* İçindeki şeffaf mavi fon perdesi */
     pointer-events: none;
 }
+
 #preview-container {
     margin-top: 10px;
     text-align: center;
@@ -225,7 +230,7 @@ video {
 #history-list li span.comma { color: #fff; }
 #history-list li:last-child span.comma { display: none; }
 
-/* 📉 v8.35 CANLI TEŞHİS (DIAGNOSTICS) PANELİ STILLERİ */
+/* 📉 CANLI DIAGNOSTICS (TEŞHİS) PANELİ STILLERİ */
 #diagnostics-panel {
     margin: 8px auto 0 auto;
     padding: 6px 10px;
@@ -236,7 +241,7 @@ video {
     display: flex;
     justify-content: space-between;
     font-family: monospace;
-    font-size: 20px; /* 🔍 İŞTE DEĞİŞTİRECEĞİNİZ YER BURASI! 0.78em*/
+    font-size: 22px; /* 🔍 Mobil ve PC tam uyumlu dev turnuva fontu */
     color: #888;
     box-sizing: border-box;
 }
