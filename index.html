@@ -260,8 +260,8 @@ v8.34: 1. Çözüm yolu (Mikro Boyut ve Opaklık) zırhı eklenerek Stealth modd
             if (isCardAlreadyReadAnywhere(cardName)) {
                 if (cardName === lastErrorCard) { return; }
                 lastErrorCard = cardName; if (historyList.querySelector('li[style*="center"]')) { historyList.innerHTML = ""; }
-                const errorLi = document.createElement('li'); errorLi.style.cssText = "display: block; color: #ff3333; font-size: 0.85em; font-weight: bold; margin: 2px 0; padding-left: 5px; border-left: 3px solid #ff3333;";
-                errorLi.innerText = `[MÜKERRER REDDEDİLDİ]: ${cardName} zaten okutulmuş!`; historyList.prepend(errorLi); playErrorBeep(); return; 
+                const errorLi = document.createElement('li'); errorLi.style.cssText = "display: inline-block; color: #ff3333; font-weight: bold; margin-right: 5px;";
+                errorLi.innerText = `[MÜK] ${cardName},`; historyList.prepend(errorLi); playErrorBeep(); return; 
             }
 
             if (historyList.querySelector('li[style*="center"]')) { historyList.innerHTML = ""; }
